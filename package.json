@@ -3,10 +3,10 @@
   "private": true,
   "packageManager": "pnpm@8.15.4",
   "scripts": {
-    "dev": "concurrently -c \"#F97316,#0EA5E9\" -n api,web \"pnpm --filter api dev\" \"pnpm --filter web dev\"",
-    "build": "pnpm --filter api build && pnpm --filter web build",
-    "lint": "pnpm --filter api lint && pnpm --filter web lint",
-    "test": "pnpm --filter api test && pnpm --filter web test"
+    "dev": "concurrently -c \"#F97316,#0EA5E9\" -n api,web \"pnpm --filter ./api dev\" \"pnpm --filter ./web dev\"",
+    "build": "pnpm --filter ./api build && pnpm --filter ./web build",
+    "prisma:generate": "pnpm --filter ./api prisma:generate",
+    "prisma:migrate": "pnpm --filter ./api prisma:migrate"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

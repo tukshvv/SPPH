@@ -8,10 +8,10 @@ datasource db {
 }
 
 model User {
-  id            String        @id
-  sessions      Session[]
-  interactions  Interaction[]
-  createdAt     DateTime      @default(now())
+  id           String        @id
+  sessions     Session[]
+  interactions Interaction[]
+  createdAt    DateTime      @default(now())
 }
 
 model Session {
@@ -24,16 +24,16 @@ model Session {
 }
 
 model Interaction {
-  id             String       @id @default(uuid())
-  userId         String
-  user           User         @relation(fields: [userId], references: [id])
-  sessionId      String?
-  session        Session?     @relation(fields: [sessionId], references: [id])
-  promptLen      Int
-  responseLen    Int
-  model          String
-  createdAt      DateTime     @default(now())
-  tokenUsage     TokenUsage?
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  sessionId   String?
+  session     Session?    @relation(fields: [sessionId], references: [id])
+  promptLen   Int
+  responseLen Int
+  model       String
+  createdAt   DateTime    @default(now())
+  tokenUsage  TokenUsage?
 }
 
 model TokenUsage {
@@ -42,5 +42,5 @@ model TokenUsage {
   interaction      Interaction @relation(fields: [interactionId], references: [id])
   promptTokens     Int
   completionTokens Int
-  costUsd          Decimal?    @db.Decimal(10, 5)
+  costUsd          Decimal?
 }
