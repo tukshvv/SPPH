@@ -1,5 +1,28 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+web/dist/
+api/dist/
+
+# Environment variables
 .env
-frontend/dist
-npm-debug.log*
+.env.*
+!.env.example
+
+# Prisma databases
+api/prisma/dev.db
+api/prisma/*.db
+
+# Logs
+*.log
+logs/
+
+# Editor directories
+.vscode/
+.idea/
+
+# Misc
 .DS_Store
+pnpm-lock.yaml

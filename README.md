@@ -1,77 +1,112 @@
-# SPPH Partner Studio
+# SPPH Chat MVP
 
-Современное веб-приложение на Node.js + Vue 3, которое превращает идеи партнёрок в готовые шаги. Интерфейс работает поверх собственного backend-шлюза и проксирует запросы к бесплатному (на старте) API Mistral AI.
+Моно-репозиторий с минимально жизнеспособным продуктом для команды SPPH:
 
-## Быстрый старт
+- **API** на Node.js 20 + Express + Prisma (SQLite) с подключаемыми LLM-провайдерами.
+- **WEB** на Vite + Vue 3 (TypeScript) + Pinia + Vue Router + TailwindCSS.
+- **Аналитика** по пользователям: количество запросов, длительность сессий, средние длины сообщений, последние взаимодействия.
 
-1. Установите зависимости:
-   ```bash
-   npm install
-   npm --prefix frontend install
-   ```
-2. Создайте файл `.env` в корне и добавьте API-ключ Mistral (зарегистрируйтесь на [platform.mistral.ai](https://platform.mistral.ai/) — стартовый тариф бесплатный):
-   ```env
-   MISTRAL_API_KEY=sk-...
-   # Дополнительно можно переопределить модель:
-   # MISTRAL_MODEL=mistral-small-latest
-   ```
-3. Запустите одновременно backend и frontend:
-   ```bash
-   npm run dev
-   ```
-4. Откройте [http://localhost:5173](http://localhost:5173) и попробуйте чат. Все запросы будут проходить через backend на `http://localhost:3000`.
+## 1. Быстрый старт
 
-> Если нужно запустить только одну часть: `npm run server` для backend и `npm --prefix frontend run dev` для Vue-интерфейса.
+```bash
+# 1. Установите pnpm (https://pnpm.io/installation)
+# 2. Установите зависимости в рабочих пространствах
+pnpm install
 
-## Архитектура
+# 3. Настройте переменные окружения
+cp .env.example .env
 
-- `server/index.js` — Express-сервер с REST-эндпоинтом `/api/chat`. Валидирует сообщения, добавляет system prompt и обращается к Mistral API.
-- `server/mistralClient.js` — небольшая обёртка над fetch с защитой от пустых ответов и понятными ошибками.
-- `frontend/` — приложение на Vite + Vue 3. Компонент `ChatWindow.vue` отвечает за логику переписки и визуальные эффекты.
+# 4. Сгенерируйте Prisma client и примените миграции (SQLite хранится в api/prisma/dev.db)
+pnpm --filter api prisma:generate
+pnpm --filter api prisma:migrate
 
-### Конфигурация
+# 5. Запустите API и WEB параллельно
+pnpm -w dev
+```
 
-Доступные переменные окружения:
+По умолчанию:
 
-| Переменная | Назначение | Значение по умолчанию |
-| --- | --- | --- |
-| `MISTRAL_API_KEY` | API-ключ для Mistral | — (обязательная) |
-| `MISTRAL_MODEL` | Модель Mistral | `mistral-small-latest` |
-| `AI_API_URL` | Альтернативный endpoint | `https://api.mistral.ai/v1/chat/completions` |
-| `SYSTEM_PROMPT` | Собственный system prompt | Предустановленный приветливый тон |
-| `PORT` | Порт backend | `3000` |
-| `CORS_ORIGINS` | Список разрешённых Origin (через запятую) | `*` |
+- API слушает `http://localhost:5050`
+- WEB доступен по `http://localhost:5173`
 
-## Production-сборка
+## 2. LLM провайдеры
 
-1. Соберите фронтенд:
-   ```bash
-   npm run build
-   ```
-   артефакты появятся в `frontend/dist`.
-2. Раздавайте их любым статическим сервером (например через Nginx или Vercel) и проксируйте `/api` на Node backend.
+Переключаются через `.env` переменную `LLM_PROVIDER`:
 
-## Как отправить проект на GitHub
+| Provider     | Описание                                                    | Требования              |
+|--------------|-------------------------------------------------------------|-------------------------|
+| `dummy`      | Эхо-ответ без внешних вызовов                               | Нет                     |
+| `openrouter` | Прокси на OpenRouter (по умолчанию модель Mistral Nemo)     | `OPENROUTER_API_KEY`    |
+| `openai`     | OpenAI Chat Completions API                                 | `OPENAI_API_KEY`        |
 
-Локальный репозиторий в этой среде не привязан к удалённому. Чтобы увидеть изменения на GitHub:
+## 3. Сценарии npm/pnpm
 
-1. Создайте пустой репозиторий на GitHub и скопируйте его URL (например `https://github.com/username/spph.git`).
-2. Добавьте удалённый origin в локальный проект:
-   ```bash
-   git remote add origin https://github.com/username/spph.git
-   ```
-   > Если origin уже существует, обновите URL: `git remote set-url origin <адрес>`.
-3. Отправьте текущую ветку вместе с тегами (по желанию):
-   ```bash
-   git push -u origin work
-   ```
-   Замените `work` на имя нужной ветки.
-4. После пуша откройте репозиторий в браузере — изменения появятся в разделе *Code* и в Pull Requests (если вы создадите PR).
+Корневые команды:
 
-> В контейнерной среде ключи SSH не настроены, поэтому проще использовать HTTPS и персональный токен GitHub.
+- `pnpm -w dev` — параллельный запуск API (`ts-node-dev`) и WEB (`vite`).
+- `pnpm -w build` — сборка обеих частей.
+- `pnpm -w lint` — статический анализ TypeScript.
+- `pnpm -w test` — unit / e2e тесты (API покрыт supertest).
 
-## Скриншоты
+Отдельные команды доступны в `api/package.json` и `web/package.json` (например `pnpm --filter api prisma:studio`).
 
-![SPPH chat preview](docs/chat-preview.png)
+## 4. Архитектура каталогов
 
-_(Скриншот можно обновить после развёртывания, добавив изображение в `docs/chat-preview.png`.)_
+```
+/api
+  src/
+    app.ts            # конфигурация Express
+    index.ts          # точка входа
+    routes/           # chat, analytics
+    services/         # llm, аналитика, метрики
+    providers/        # openai, openrouter, dummy
+    middleware/       # zod-валидация, error handler
+    schemas/          # типы запросов
+    utils/            # env, logger, prisma
+  prisma/
+    schema.prisma     # SQLite схема
+    migrations/       # начальная миграция
+/web
+  src/
+    pages/            # Chat и Dashboard
+    components/       # UI-компоненты
+    stores/           # Pinia (user, chat, metrics, notifications)
+    lib/api.ts        # REST-клиент
+  tailwind.config.cjs # тема с фирменным оранжевым (primary #F97316)
+```
+
+## 5. Безопасность и инфраструктура
+
+- `.env` не коммитится; пример лежит в `.env.example`.
+- Express защищён `helmet`, CORS ограничен локальным фронтендом, rate-limit — 30 запросов за 5 минут на сочетание IP + userId.
+- Входные payload'ы проверяются через `zod`, ошибки централизованно логируются через `pino`.
+- Логи и временные файлы игнорируются `.gitignore`.
+
+## 6. Аналитика и метрики
+
+- При первом заходе генерируется анонимный `userId` (UUID) и сохраняется в `localStorage`.
+- Визиты отслеживаются через `/api/metrics/visit` (`start`, `heartbeat` каждые 15 секунд, `stop` перед уходом).
+- Каждое обращение к `/api/chat` сохраняет Interaction + TokenUsage (если данные от провайдера доступны).
+- Дашборд `/dashboard` показывает ключевые KPI и таблицу последних 20 взаимодействий.
+
+## 7. UI-гайдлайн
+
+- Tailwind с кастомным primary `#F97316` (hover `#EA580C`).
+- Светлый фон, шрифт Inter / системный.
+- Современные карточки, плавные hover-состояния, тосты для ошибок.
+
+## 8. Тестирование
+
+API покрыт базовыми проверками через `vitest + supertest` (`pnpm --filter api test`). Для фронта предусмотрен `vitest`, но UI-скриншоты/визуальные тесты на MVP-этапе не обязательны.
+
+## 9. Скриншоты UI
+
+Скриншоты чата и дашборда находятся в каталоге `docs/screenshots/` (см. PR). При локальном запуске вы можете обновить их через любой инструмент захвата экрана.
+
+## 10. Дальшие шаги
+
+- Добавить авторизацию и привязку к реальным аккаунтам.
+- Подключить Postgres и вынести Prisma datasource в переменные окружения.
+- Расширить аналитический дашборд (конверсия, модели, ретроспектива по дням).
+
+> Если что-то сломалось или появились идеи улучшения, создайте issue или ping в Slack: @spph-team.
