@@ -1,15 +1,28 @@
-# Node / Next
+# Dependencies
 node_modules/
-.next/
-out/
+
+# Build outputs
 dist/
-coverage/
-*.log
-# env
+web/dist/
+api/dist/
+
+# Environment variables
 .env
 .env.*
 !.env.example
-# OS/editor
-.DS_Store
-Thumbs.db
+
+# Prisma databases
+api/prisma/dev.db
+api/prisma/*.db
+
+# Logs
+*.log
+logs/
+
+# Editor directories
 .vscode/
+.idea/
+
+# Misc
+.DS_Store
+pnpm-lock.yaml
