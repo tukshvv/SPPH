@@ -5,10 +5,6 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const DEFAULT_MODEL = 'gpt-3.5-turbo';
 
 export const createOpenAIProvider = (): LLMProvider => {
-  if (!env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is required when LLM_PROVIDER=openai');
-  }
-
   return {
     async chat(messages: LLMMessage[]): Promise<LLMResponse> {
       const response = await fetch(OPENAI_API_URL, {

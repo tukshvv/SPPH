@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeAll } from 'vitest';
 
 process.env.DATABASE_URL = 'file:./test.db';
 process.env.PORT = '0';
-process.env.LLM_PROVIDER = 'dummy';
+process.env.OPENAI_API_KEY = 'test-key';
 
 const recordInteraction = vi.fn();
 const getUserStats = vi.fn();
@@ -12,7 +12,7 @@ const recordVisitEvent = vi.fn();
 vi.mock('./services/llmService.js', () => ({
   sendChatCompletion: vi.fn(async () => ({
     content: 'Hello world',
-    model: 'dummy',
+    model: 'gpt-3.5-turbo',
     promptTokens: 5,
     completionTokens: 2,
     costUsd: 0

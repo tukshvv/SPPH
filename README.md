@@ -29,15 +29,9 @@ pnpm -w dev
 - API слушает `http://localhost:5050`
 - WEB доступен по `http://localhost:5173`
 
-## 2. LLM провайдеры
+## 2. LLM провайдер
 
-Переключаются через `.env` переменную `LLM_PROVIDER`:
-
-| Provider     | Описание                                                    | Требования              |
-|--------------|-------------------------------------------------------------|-------------------------|
-| `dummy`      | Эхо-ответ без внешних вызовов                               | Нет                     |
-| `openrouter` | Прокси на OpenRouter (по умолчанию модель Mistral Nemo)     | `OPENROUTER_API_KEY`    |
-| `openai`     | OpenAI Chat Completions API                                 | `OPENAI_API_KEY`        |
+MVP настроен на работу исключительно с OpenAI Chat Completions API. Для использования укажите `OPENAI_API_KEY` в `.env`.
 
 ## 3. Сценарии npm/pnpm
 
@@ -59,7 +53,7 @@ pnpm -w dev
     index.ts          # точка входа
     routes/           # chat, analytics
     services/         # llm, аналитика, метрики
-    providers/        # openai, openrouter, dummy
+    providers/        # openai
     middleware/       # zod-валидация, error handler
     schemas/          # типы запросов
     utils/            # env, logger, prisma
