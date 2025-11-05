@@ -8,6 +8,19 @@ import {
 import type { LLMMessage } from '../providers/types.js';
 import { sendChatCompletion } from '../services/llmService.js';
 import type { AgentIntent } from './intent.js';
+import { answerWithRAG, type CitationReference } from './ragAgent.js';
+
+type ResponseMode = 'basic' | 'rag';
+
+const ragTriggerPhrases = ['по лекции', 'найди в конспекте', 'цитируй'];
+
+const shouldUseRAG = (mode: ResponseMode | 'auto', message: string) => {
+  if (mode === 'rag') return true;
+  if (mode === 'basic') return false;
+
+  const normalized = message.toLowerCase();
+  return ragTriggerPhrases.some((phrase) => normalized.includes(phrase));
+};
 
 const buildPersonaPrompt = (profile: UserProfile, intent: AgentIntent) => {
   const persona = [
@@ -55,6 +68,7 @@ const buildProfileHint = (profile: UserProfile) => {
 interface ProcessMessageInput {
   userId: string;
   message: string;
+  mode?: 'auto' | ResponseMode;
 }
 
 interface ProcessMessageResult {
@@ -65,9 +79,15 @@ interface ProcessMessageResult {
   usage?: { promptTokens?: number; completionTokens?: number };
   model?: string;
   profileHint?: string;
+  citations?: CitationReference[];
+  mode: ResponseMode;
 }
 
-export const processMessage = async ({ userId, message }: ProcessMessageInput): Promise<ProcessMessageResult> => {
+export const processMessage = async ({
+  userId,
+  message,
+  mode = 'auto'
+}: ProcessMessageInput): Promise<ProcessMessageResult> => {
   const intent = detectIntent(message);
   const profile = getUserProfile(userId);
   const context = getRecentConversation(userId, 12);
@@ -84,24 +104,49 @@ export const processMessage = async ({ userId, message }: ProcessMessageInput): 
     { role: 'user', content: message }
   ];
 
-  const llmResponse = await sendChatCompletion(messages);
-  const text = llmResponse.content.trim();
+  let responseText: string;
+  let responseMode: ResponseMode = 'basic';
+  let citations: CitationReference[] | undefined;
+  let usage: { promptTokens?: number; completionTokens?: number } | undefined;
+  let model: string | undefined;
+  let usedContextSize = contextMessages.length;
+
+  if (shouldUseRAG(mode, message)) {
+    const ragResult = await answerWithRAG({
+      message,
+      systemPrompt,
+      conversation: contextMessages
+    });
+    responseText = ragResult.text;
+    responseMode = 'rag';
+    citations = ragResult.citations.length > 0 ? ragResult.citations : undefined;
+    usage = ragResult.usage;
+    model = ragResult.model;
+    usedContextSize = ragResult.usedChunks;
+  } else {
+    const llmResponse = await sendChatCompletion(messages);
+    responseText = llmResponse.content.trim();
+    usage = {
+      promptTokens: llmResponse.promptTokens,
+      completionTokens: llmResponse.completionTokens
+    };
+    model = llmResponse.model;
+  }
 
   saveMessage({ userId, role: 'user', text: message });
-  saveMessage({ userId, role: 'assistant', text });
+  saveMessage({ userId, role: 'assistant', text: responseText });
 
   const profileHint = buildProfileHint(profile);
 
   return {
-    text,
+    text: responseText,
     intent,
     usedProfile: profile,
-    usedContextSize: contextMessages.length,
-    usage: {
-      promptTokens: llmResponse.promptTokens,
-      completionTokens: llmResponse.completionTokens
-    },
-    model: llmResponse.model,
-    profileHint
+    usedContextSize,
+    usage,
+    model,
+    profileHint,
+    citations,
+    mode: responseMode
   };
 };

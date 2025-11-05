@@ -13,7 +13,7 @@ export const chatRouter = Router();
 chatRouter.post('/', validate(chatRequestSchema), async (req, res, next) => {
   const startedAt = Date.now();
   try {
-    const { userId, sessionId, message, messages } = req.body as ChatRequestBody;
+    const { userId, sessionId, message, messages, mode } = req.body as ChatRequestBody;
 
     let prompt = message;
 
@@ -36,7 +36,7 @@ chatRouter.post('/', validate(chatRequestSchema), async (req, res, next) => {
       throw new HttpError(400, 'EMPTY_MESSAGE', 'Сообщение не должно быть пустым');
     }
 
-    const result = await processMessage({ userId, message: prompt });
+    const result = await processMessage({ userId, message: prompt, mode });
 
     await recordInteraction({
       userId,
@@ -70,7 +70,9 @@ chatRouter.post('/', validate(chatRequestSchema), async (req, res, next) => {
         promptTokens: result.usage?.promptTokens,
         completionTokens: result.usage?.completionTokens
       },
-      profileHint: result.profileHint ?? undefined
+      profileHint: result.profileHint ?? undefined,
+      citations: result.citations ?? [],
+      mode: result.mode
     });
   } catch (error) {
     const status = error instanceof HttpError ? error.status : error.status ?? 500;
