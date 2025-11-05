@@ -12,6 +12,12 @@ export interface ChatMessage {
   content: string;
   createdAt: string;
   pending?: boolean;
+  intent?: 'qa' | 'search' | 'explain';
+  usage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+  };
+  profileHint?: string;
 }
 
 interface ChatState {
@@ -76,10 +82,7 @@ export const useChatStore = defineStore('chat', {
       try {
         const response = await apiClient.chat({
           userId,
-          sessionId: metricsStore.sessionId ?? undefined,
-          messages: this.messages
-            .filter((message) => !message.pending)
-            .map(({ role, content }) => ({ role, content }))
+          message: trimmed
         });
         const lastIndex = this.messages.findIndex((msg) => msg.id === placeholder.id);
         if (lastIndex !== -1) {
@@ -87,10 +90,20 @@ export const useChatStore = defineStore('chat', {
             ...placeholder,
             pending: false,
             content: response.reply,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            intent: response.intent,
+            usage: response.usage,
+            profileHint: response.profileHint
           });
         }
         metricsStore.incrementRequests();
+        if (response.profileHint) {
+          notifications.push({
+            title: 'Уточните профиль',
+            description: response.profileHint,
+            tone: 'info'
+          });
+        }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
         notifications.push({

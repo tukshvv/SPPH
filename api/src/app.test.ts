@@ -4,19 +4,26 @@ import { describe, expect, it, vi, beforeAll } from 'vitest';
 process.env.DATABASE_URL = 'file:./test.db';
 process.env.PORT = '0';
 process.env.LLM_PROVIDER = 'dummy';
+process.env.npm_package_version = 'test';
 
 const recordInteraction = vi.fn();
 const getUserStats = vi.fn();
 const recordVisitEvent = vi.fn();
 
-vi.mock('./services/llmService.js', () => ({
-  sendChatCompletion: vi.fn(async () => ({
-    content: 'Hello world',
-    model: 'dummy',
+const processMessage = vi.fn(async () => ({
+  text: 'Hello world',
+  intent: 'qa',
+  usedProfile: { topics: [] },
+  usedContextSize: 0,
+  usage: {
     promptTokens: 5,
-    completionTokens: 2,
-    costUsd: 0
-  }))
+    completionTokens: 2
+  },
+  model: 'dummy'
+}));
+
+vi.mock('./agent/orchestrator.js', () => ({
+  processMessage
 }));
 
 vi.mock('./services/analyticsService.js', () => ({
@@ -39,24 +46,24 @@ describe('API surface', () => {
   it('returns health status', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: 'ok' });
+    expect(res.body).toEqual({ ok: true, version: 'test' });
   });
 
   it('handles chat completions', async () => {
     const payload = {
       userId: '11111111-1111-1111-1111-111111111111',
-      messages: [
-        { role: 'user', content: 'Hi there' }
-      ]
+      message: 'Hi there'
     };
 
     const res = await request(app).post('/api/chat').send(payload);
     expect(res.status).toBe(200);
     expect(res.body.reply).toBe('Hello world');
+    expect(res.body.intent).toBe('qa');
+    expect(processMessage).toHaveBeenCalledWith({ userId: payload.userId, message: payload.message });
     expect(recordInteraction).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: payload.userId,
-        promptLen: payload.messages[0].content.length
+        promptLen: payload.message.length
       })
     );
   });
@@ -87,5 +94,18 @@ describe('API surface', () => {
       });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ sessionId: 'session-1' });
+  });
+
+  it('manages user profiles', async () => {
+    const userId = '11111111-1111-1111-1111-111111111111';
+    const getRes = await request(app).get('/api/user/profile').query({ userId });
+    expect(getRes.status).toBe(200);
+    expect(getRes.body).toEqual({ topics: [] });
+
+    const postRes = await request(app)
+      .post('/api/user/profile')
+      .send({ userId, patch: { major: 'Экономика', topics: ['spph'] } });
+    expect(postRes.status).toBe(200);
+    expect(postRes.body).toEqual({ major: 'Экономика', topics: ['spph'] });
   });
 });

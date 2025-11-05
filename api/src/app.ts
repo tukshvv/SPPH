@@ -6,6 +6,9 @@ import { chatRouter } from './routes/chat.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { errorHandler } from './middleware/error.js';
 import { env } from './utils/env.js';
+import { requestContext } from './middleware/requestContext.js';
+import { requestLogger } from './middleware/logger.js';
+import { userRouter } from './routes/user.js';
 
 const allowedOrigins = [process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173'];
 
@@ -33,13 +36,22 @@ export const createApp = () => {
     })
   );
   app.use(express.json({ limit: '1mb' }));
+  app.use(requestContext);
+  app.use(requestLogger);
+
+  const version = process.env.npm_package_version ?? 'dev';
 
   app.get('/health', (_req, res) => {
-    res.json({ status: 'ok' });
+    res.json({ ok: true, version });
+  });
+
+  app.get('/api/health', (_req, res) => {
+    res.json({ ok: true, version });
   });
 
   app.use('/api/chat', chatLimiter, chatRouter);
   app.use('/api', analyticsRouter);
+  app.use('/api/user', userRouter);
 
   app.use(errorHandler);
 
