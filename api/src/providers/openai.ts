@@ -1,13 +1,9 @@
-import { env } from '../utils/env.js';
+import { env, ensureOpenAIConfig } from '../utils/env.js';
 import type { LLMMessage, LLMProvider, LLMResponse } from './types.js';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const DEFAULT_MODEL = 'gpt-3.5-turbo';
-
 export const createOpenAIProvider = (): LLMProvider => {
-  if (!env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is required when LLM_PROVIDER=openai');
-  }
+  ensureOpenAIConfig();
 
   return {
     async chat(messages: LLMMessage[]): Promise<LLMResponse> {
@@ -18,7 +14,7 @@ export const createOpenAIProvider = (): LLMProvider => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: DEFAULT_MODEL,
+          model: env.OPENAI_MODEL,
           messages
         })
       });
@@ -33,7 +29,7 @@ export const createOpenAIProvider = (): LLMProvider => {
 
       return {
         content: choice,
-        model: payload.model ?? DEFAULT_MODEL,
+        model: payload.model ?? env.OPENAI_MODEL,
         promptTokens: payload.usage?.prompt_tokens,
         completionTokens: payload.usage?.completion_tokens,
         costUsd: payload.usage?.total_tokens

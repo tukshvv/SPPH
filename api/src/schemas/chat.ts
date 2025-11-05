@@ -6,11 +6,17 @@ export const messageSchema = z.object({
 });
 
 export const chatRequestSchema = z.object({
-  body: z.object({
-    userId: z.string().uuid(),
-    sessionId: z.string().uuid().optional(),
-    messages: z.array(messageSchema).min(1)
-  })
+  body: z
+    .object({
+      userId: z.string().uuid(),
+      sessionId: z.string().uuid().optional(),
+      message: z.string().min(1).max(4000).optional(),
+      messages: z.array(messageSchema).min(1).optional()
+    })
+    .refine((data) => Boolean(data.message?.trim() ?? data.messages?.length), {
+      message: 'Either message or messages must be provided',
+      path: ['message']
+    })
 });
 
 export type ChatRequestBody = z.infer<typeof chatRequestSchema>['body'];

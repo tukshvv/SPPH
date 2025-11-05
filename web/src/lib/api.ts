@@ -23,6 +23,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   });
 
   if (!response.ok) {
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      const payload = await response.json();
+      const message = payload?.error?.message ?? payload?.message ?? response.statusText;
+      throw new Error(message);
+    }
     const errorText = await response.text();
     throw new Error(errorText || response.statusText);
   }
@@ -32,18 +38,28 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 export interface ChatRequestPayload {
   userId: string;
-  sessionId?: string;
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  message: string;
 }
 
 export interface ChatResponsePayload {
   reply: string;
-  model: string;
+  intent: 'qa' | 'search' | 'explain';
   usage: {
-    promptTokens: number;
-    completionTokens: number;
-    costUsd: number;
+    promptTokens?: number;
+    completionTokens?: number;
   };
+  profileHint?: string;
+}
+
+export interface UserProfilePayload {
+  major?: string;
+  topics: string[];
+  level?: string;
+}
+
+export interface ProfileUpdatePayload {
+  userId: string;
+  patch: Partial<UserProfilePayload> & { topics?: string[] };
 }
 
 export interface UserStatsResponse {
@@ -74,6 +90,17 @@ export interface VisitEventPayload {
 export const apiClient = {
   chat(payload: ChatRequestPayload) {
     return request<ChatResponsePayload>('/api/chat', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+  fetchUserProfile(userId: string) {
+    return request<UserProfilePayload>('/api/user/profile', {
+      params: { userId }
+    });
+  },
+  updateUserProfile(payload: ProfileUpdatePayload) {
+    return request<UserProfilePayload>('/api/user/profile', {
       method: 'POST',
       body: JSON.stringify(payload)
     });
