@@ -4,6 +4,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { chatRouter } from './routes/chat.js';
 import { analyticsRouter } from './routes/analytics.js';
+import { ingestRouter } from './routes/ingest.js';
 import { errorHandler } from './middleware/error.js';
 import { env } from './utils/env.js';
 import { requestContext } from './middleware/requestContext.js';
@@ -50,6 +51,7 @@ export const createApp = () => {
   });
 
   app.use('/api/chat', chatLimiter, chatRouter);
+  app.use('/api', ingestRouter);
   app.use('/api', analyticsRouter);
   app.use('/api/user', userRouter);
 

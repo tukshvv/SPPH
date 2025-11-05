@@ -39,6 +39,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 export interface ChatRequestPayload {
   userId: string;
   message: string;
+  mode?: 'auto' | 'rag' | 'basic';
 }
 
 export interface ChatResponsePayload {
@@ -49,6 +50,8 @@ export interface ChatResponsePayload {
     completionTokens?: number;
   };
   profileHint?: string;
+  citations: Array<{ docId: string; chunkIdx: number }>;
+  mode: 'basic' | 'rag';
 }
 
 export interface UserProfilePayload {
@@ -92,6 +95,12 @@ export const apiClient = {
     return request<ChatResponsePayload>('/api/chat', {
       method: 'POST',
       body: JSON.stringify(payload)
+    });
+  },
+  ingestDocuments(docs: Array<{ id?: string; text: string; meta?: Record<string, unknown> }>) {
+    return request<{ inserted: number; chunks: number }>('/api/ingest', {
+      method: 'POST',
+      body: JSON.stringify({ docs })
     });
   },
   fetchUserProfile(userId: string) {

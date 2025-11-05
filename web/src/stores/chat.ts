@@ -18,11 +18,14 @@ export interface ChatMessage {
     completionTokens?: number;
   };
   profileHint?: string;
+  citations?: Array<{ docId: string; chunkIdx: number }>;
+  responseMode?: 'basic' | 'rag';
 }
 
 interface ChatState {
   messages: ChatMessage[];
   isSending: boolean;
+  mode: 'auto' | 'rag' | 'basic';
 }
 
 export const useChatStore = defineStore('chat', {
@@ -35,7 +38,8 @@ export const useChatStore = defineStore('chat', {
         createdAt: new Date().toISOString()
       }
     ],
-    isSending: false
+    isSending: false,
+    mode: 'auto'
   }),
   actions: {
     addMessage(message: ChatMessage) {
@@ -52,6 +56,9 @@ export const useChatStore = defineStore('chat', {
       ];
       const metricsStore = useMetricsStore();
       metricsStore.resetRequests();
+    },
+    setMode(mode: 'auto' | 'rag' | 'basic') {
+      this.mode = mode;
     },
     async sendPrompt(content: string) {
       const trimmed = content.trim();
@@ -82,7 +89,8 @@ export const useChatStore = defineStore('chat', {
       try {
         const response = await apiClient.chat({
           userId,
-          message: trimmed
+          message: trimmed,
+          mode: this.mode
         });
         const lastIndex = this.messages.findIndex((msg) => msg.id === placeholder.id);
         if (lastIndex !== -1) {
@@ -93,7 +101,9 @@ export const useChatStore = defineStore('chat', {
             createdAt: new Date().toISOString(),
             intent: response.intent,
             usage: response.usage,
-            profileHint: response.profileHint
+            profileHint: response.profileHint,
+            citations: response.citations,
+            responseMode: response.mode
           });
         }
         metricsStore.incrementRequests();
