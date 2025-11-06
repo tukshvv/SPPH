@@ -65,12 +65,39 @@ export interface ProfileUpdatePayload {
   patch: Partial<UserProfilePayload> & { topics?: string[] };
 }
 
+export interface RegistrationMetaPayload {
+  name: string;
+  email: string;
+  registeredAt: string;
+}
+
+export interface AuthSuccessPayload {
+  userId: string;
+  profile: UserProfilePayload;
+  registration: RegistrationMetaPayload | null;
+}
+
+export interface RegisterUserPayload {
+  name: string;
+  email: string;
+  password: string;
+  major?: string;
+  level?: string;
+  topics?: string[];
+}
+
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
 export interface UserStatsResponse {
   totalRequests: number;
   sessionsCount: number;
   totalTimeMs: number;
   avgPromptLength: number;
   avgResponseLength: number;
+  activity: Array<{ date: string; count: number }>;
   recentInteractions: Array<{
     id: string;
     createdAt: string;
@@ -110,6 +137,24 @@ export const apiClient = {
   },
   updateUserProfile(payload: ProfileUpdatePayload) {
     return request<UserProfilePayload>('/api/user/profile', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+  registerUser(payload: RegisterUserPayload) {
+    return request<AuthSuccessPayload>('/api/user/register', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+  login(payload: LoginPayload) {
+    return request<AuthSuccessPayload>('/api/user/login', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+  updateAccount(payload: { userId: string; name: string; email: string }) {
+    return request<RegistrationMetaPayload>('/api/user/account', {
       method: 'POST',
       body: JSON.stringify(payload)
     });

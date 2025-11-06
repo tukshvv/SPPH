@@ -103,7 +103,12 @@ export const recordVisitEvent = async (
 export const getUserStats = async (userId: string) => {
   await ensureUser(userId);
 
-  const [interactionAggregate, sessions, latestInteractions] = await Promise.all([
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const activityWindowStart = new Date(today);
+  activityWindowStart.setDate(activityWindowStart.getDate() - 364);
+
+  const [interactionAggregate, sessions, latestInteractions, recentActivity] = await Promise.all([
     prisma.interaction.aggregate({
       where: { userId },
       _count: { _all: true },
@@ -118,6 +123,16 @@ export const getUserStats = async (userId: string) => {
       include: { tokenUsage: true },
       orderBy: { createdAt: 'desc' },
       take: 20
+    }),
+    prisma.interaction.findMany({
+      where: {
+        userId,
+        createdAt: {
+          gte: activityWindowStart
+        }
+      },
+      select: { createdAt: true },
+      orderBy: { createdAt: 'asc' }
     })
   ]);
 
@@ -126,12 +141,32 @@ export const getUserStats = async (userId: string) => {
     return acc + (end.getTime() - session.startedAt.getTime());
   }, 0);
 
+  const activityCounts = new Map<string, number>();
+  for (const interaction of recentActivity) {
+    const key = interaction.createdAt.toISOString().slice(0, 10);
+    activityCounts.set(key, (activityCounts.get(key) ?? 0) + 1);
+  }
+
+  const startDate = new Date(activityWindowStart);
+  const startDay = startDate.getDay();
+  startDate.setDate(startDate.getDate() - startDay);
+
+  const activity: Array<{ date: string; count: number }> = [];
+  const cursor = new Date(startDate);
+
+  while (cursor <= today) {
+    const key = cursor.toISOString().slice(0, 10);
+    activity.push({ date: key, count: activityCounts.get(key) ?? 0 });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
   return {
     totalRequests: interactionAggregate._count._all,
     sessionsCount: sessions.length,
     totalTimeMs,
     avgPromptLength: interactionAggregate._avg.promptLen ?? 0,
     avgResponseLength: interactionAggregate._avg.responseLen ?? 0,
+    activity,
     recentInteractions: latestInteractions.map((interaction) => ({
       id: interaction.id,
       createdAt: interaction.createdAt,
