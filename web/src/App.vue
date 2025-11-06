@@ -6,23 +6,20 @@
           <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">SP</span>
           <span>SPPH Chat</span>
         </RouterLink>
-        <nav class="flex items-center gap-3 text-sm font-medium text-slate-600">
-          <RouterLink to="/" custom v-slot="{ href, navigate, isExactActive }">
+        <nav class="flex items-center gap-2 text-sm font-medium text-slate-600">
+          <RouterLink
+            v-for="link in navLinks"
+            :key="link.to"
+            :to="link.to"
+            custom
+            v-slot="{ href, navigate, isExactActive, isActive }"
+          >
             <a
               :href="href"
               @click.prevent="navigate"
-              :class="navClasses(isExactActive)"
+              :class="navClasses(link.exact ? isExactActive : isActive)"
             >
-              Чат
-            </a>
-          </RouterLink>
-          <RouterLink to="/dashboard" custom v-slot="{ href, navigate, isExactActive }">
-            <a
-              :href="href"
-              @click.prevent="navigate"
-              :class="navClasses(isExactActive)"
-            >
-              Дашборд
+              {{ link.label }}
             </a>
           </RouterLink>
         </nav>
@@ -38,6 +35,21 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router';
 import ToastHost from './components/ToastHost.vue';
+
+interface NavLink {
+  to: string;
+  label: string;
+  exact?: boolean;
+}
+
+const navLinks: NavLink[] = [
+  { to: '/', label: 'Главная', exact: true },
+  { to: '/chat', label: 'Чат' },
+  { to: '/agent', label: 'Агент' },
+  { to: '/docs', label: 'Документы' },
+  { to: '/profile', label: 'Профиль' },
+  { to: '/dashboard', label: 'Дашборд' }
+];
 
 const navClasses = (active: boolean) =>
   [
