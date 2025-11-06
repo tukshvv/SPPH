@@ -1,14 +1,10 @@
 import { detectIntent } from './intent.js';
-import {
-  getRecentConversation,
-  getUserProfile,
-  saveMessage,
-  type UserProfile
-} from './memory.js';
+import { getRecentConversation, saveMessage } from './memory.js';
 import type { LLMMessage } from '../providers/types.js';
 import { sendChatCompletion } from '../services/llmService.js';
 import type { AgentIntent } from './intent.js';
 import { answerWithRAG, type CitationReference } from './ragAgent.js';
+import { getUserProfile, type UserProfile } from '../services/userService.js';
 
 type ResponseMode = 'basic' | 'rag';
 
@@ -89,7 +85,7 @@ export const processMessage = async ({
   mode = 'auto'
 }: ProcessMessageInput): Promise<ProcessMessageResult> => {
   const intent = detectIntent(message);
-  const profile = getUserProfile(userId);
+  const profile = await getUserProfile(userId);
   const context = getRecentConversation(userId, 12);
   const systemPrompt = buildPersonaPrompt(profile, intent);
 
