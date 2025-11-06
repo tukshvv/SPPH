@@ -66,7 +66,16 @@ export const useChatStore = defineStore('chat', {
       const userStore = useUserStore();
       const metricsStore = useMetricsStore();
       const notifications = useNotificationStore();
-      const userId = userStore.ensureUserId();
+      const userId = userStore.userId;
+
+      if (!userId) {
+        notifications.push({
+          title: 'Требуется регистрация',
+          description: 'Зарегистрируйтесь или войдите на главной странице, чтобы начать диалог с ассистентом.',
+          tone: 'info'
+        });
+        return;
+      }
 
       const userMessage: ChatMessage = {
         id: crypto.randomUUID(),
