@@ -1,23 +1,28 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import HomePage from '../pages/HomePage.vue';
 import ChatPage from '../pages/ChatPage.vue';
 import DocsPage from '../pages/DocsPage.vue';
 import ProfilePage from '../pages/ProfilePage.vue';
 import DashboardPage from '../pages/DashboardPage.vue';
 import AgentPage from '../pages/AgentPage.vue';
+import AuthPage from '../pages/AuthPage.vue';
+import { useUserStore } from '../stores/user';
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: HomePage
+      name: 'chat',
+      component: ChatPage
     },
     {
       path: '/chat',
-      name: 'chat',
-      component: ChatPage
+      redirect: '/' 
+    },
+    {
+      path: '/auth',
+      name: 'auth',
+      component: AuthPage
     },
     {
       path: '/docs',
@@ -40,6 +45,25 @@ const router = createRouter({
       component: DashboardPage
     }
   ]
+});
+
+const publicRoutes = new Set(['auth']);
+
+router.beforeEach((to) => {
+  const userStore = useUserStore();
+  userStore.initialize();
+
+  const targetName = typeof to.name === 'string' ? to.name : undefined;
+  if (!userStore.userId && (!targetName || !publicRoutes.has(targetName))) {
+    const query = to.fullPath && to.fullPath !== '/' ? { redirect: to.fullPath } : undefined;
+    return { name: 'auth', query };
+  }
+
+  if (userStore.userId && targetName === 'auth') {
+    return { path: '/' };
+  }
+
+  return true;
 });
 
 export default router;

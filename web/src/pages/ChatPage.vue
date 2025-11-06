@@ -39,13 +39,13 @@
         >
           <h2 class="text-base font-semibold text-slate-900">Начните с регистрации</h2>
           <p class="mt-2">
-            Чтобы ассистент помнил ваш профиль и рассчитывал статистику, создайте аккаунт на главной странице.
+            Чтобы ассистент помнил ваш профиль и рассчитывал статистику, создайте аккаунт на странице авторизации.
           </p>
           <RouterLink
-            to="/"
+            to="/auth"
             class="mt-4 inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
           >
-            Перейти к регистрации
+            Перейти к авторизации
           </RouterLink>
         </div>
       </div>

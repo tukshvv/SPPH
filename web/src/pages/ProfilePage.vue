@@ -9,12 +9,12 @@
 
     <div v-if="!userStore.userId" class="mt-8 rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600">
       <h2 class="text-lg font-semibold text-slate-900">Аккаунт не создан</h2>
-      <p class="mt-2">Перейдите на главную страницу и пройдите регистрацию, чтобы открыть доступ к настройкам профиля.</p>
+      <p class="mt-2">Перейдите на страницу авторизации и пройдите регистрацию, чтобы открыть доступ к настройкам профиля.</p>
       <RouterLink
-        to="/"
+        to="/auth"
         class="mt-4 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
       >
-        На главную
+        К авторизации
       </RouterLink>
     </div>
 
@@ -409,10 +409,10 @@ const handleLogout = async () => {
   metricsStore.$patch({ stats: null, statsError: null, sessionId: null, requestCount: 0 });
   notifications.push({
     title: 'Вы вышли из аккаунта',
-    description: 'Вернитесь на главную, чтобы войти снова.',
+    description: 'Перейдите на страницу авторизации, чтобы войти снова.',
     tone: 'info'
   });
-  await router.push('/');
+  await router.push('/auth');
 };
 
 const formatRegisteredAt = (value: string) =>

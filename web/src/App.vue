@@ -6,7 +6,7 @@
           <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">SP</span>
           <span>SPPH Chat</span>
         </RouterLink>
-        <nav class="flex items-center gap-2 text-sm font-medium text-slate-600">
+        <nav v-if="showNavigation" class="flex items-center gap-2 text-sm font-medium text-slate-600">
           <RouterLink
             v-for="link in navLinks"
             :key="link.to"
@@ -26,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import ToastHost from './components/ToastHost.vue';
 
@@ -36,8 +37,7 @@ interface NavLink {
 }
 
 const navLinks: NavLink[] = [
-  { to: '/', label: 'Главная', exact: true },
-  { to: '/chat', label: 'Чат' },
+  { to: '/', label: 'Чат', exact: true },
   { to: '/agent', label: 'Агент' },
   { to: '/docs', label: 'Документы' },
   { to: '/profile', label: 'Профиль' },
@@ -45,6 +45,8 @@ const navLinks: NavLink[] = [
 ];
 
 const route = useRoute();
+
+const showNavigation = computed(() => route.name !== 'auth');
 
 const navClasses = (link: NavLink) => {
   const isActive = link.exact ? route.path === link.to : route.path.startsWith(link.to) && link.to !== '/';

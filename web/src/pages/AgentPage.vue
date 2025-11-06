@@ -25,10 +25,10 @@
             <h2 class="text-base font-semibold text-slate-900">Зарегистрируйтесь, чтобы запускать агента</h2>
             <p class="mt-2">Мы сохраняем ваши настройки и результаты шагов только для зарегистрированных пользователей.</p>
             <RouterLink
-              to="/"
+              to="/auth"
               class="mt-3 inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-hover"
             >
-              Перейти к регистрации
+              Перейти к авторизации
             </RouterLink>
           </div>
         </div>

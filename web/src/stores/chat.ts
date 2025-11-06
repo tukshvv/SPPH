@@ -71,7 +71,7 @@ export const useChatStore = defineStore('chat', {
       if (!userId) {
         notifications.push({
           title: 'Требуется регистрация',
-          description: 'Зарегистрируйтесь или войдите на главной странице, чтобы начать диалог с ассистентом.',
+          description: 'Зарегистрируйтесь или войдите на странице авторизации, чтобы начать диалог с ассистентом.',
           tone: 'info'
         });
         return;
