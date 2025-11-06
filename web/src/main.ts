@@ -13,7 +13,7 @@ app.use(pinia);
 app.use(router);
 
 const userStore = useUserStore(pinia);
-userStore.ensureUserId();
+userStore.initialize();
 
 const metricsStore = useMetricsStore(pinia);
 metricsStore.bindLifecycle();

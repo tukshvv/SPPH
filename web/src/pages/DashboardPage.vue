@@ -7,7 +7,20 @@
       </p>
     </div>
 
-    <div v-if="metrics.statsLoading" class="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center text-slate-500">
+    <div v-if="!userStore.userId" class="rounded-3xl border border-slate-200 bg-white p-8 text-center">
+      <h2 class="text-lg font-semibold text-slate-900">Нужна регистрация</h2>
+      <p class="mt-2 text-sm text-slate-500">
+        Создайте аккаунт на главной странице, чтобы начать собирать метрики об использовании ассистента.
+      </p>
+      <RouterLink
+        to="/"
+        class="mt-4 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
+      >
+        Перейти на главную
+      </RouterLink>
+    </div>
+
+    <div v-else-if="metrics.statsLoading" class="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center text-slate-500">
       Загружаем статистику…
     </div>
 
@@ -69,7 +82,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, watch } from 'vue';
+import { RouterLink } from 'vue-router';
 import { useMetricsStore } from '../stores/metrics';
 import { useUserStore } from '../stores/user';
 import StatCard from '../components/StatCard.vue';
@@ -89,8 +103,8 @@ const sessionHint = computed(() => {
 });
 
 const refresh = () => {
-  const userId = userStore.ensureUserId();
-  void metrics.fetchStats(userId);
+  if (!userStore.userId) return;
+  void metrics.fetchStats(userStore.userId);
 };
 
 const formatDate = (value: string) =>
@@ -102,6 +116,21 @@ const formatDate = (value: string) =>
   });
 
 onMounted(() => {
-  refresh();
+  if (userStore.userId) {
+    refresh();
+  }
 });
+
+watch(
+  () => userStore.userId,
+  (next, previous) => {
+    if (!next) {
+      metrics.stats = null;
+      return;
+    }
+    if (next !== previous) {
+      refresh();
+    }
+  }
+);
 </script>

@@ -71,6 +71,7 @@ export interface UserStatsResponse {
   totalTimeMs: number;
   avgPromptLength: number;
   avgResponseLength: number;
+  activity: Array<{ date: string; count: number }>;
   recentInteractions: Array<{
     id: string;
     createdAt: string;

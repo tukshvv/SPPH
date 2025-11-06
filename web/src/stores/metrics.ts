@@ -33,19 +33,42 @@ export const useMetricsStore = defineStore('metrics', {
       if (this.isBound) return;
       this.isBound = true;
       const userStore = useUserStore();
-      const userId = userStore.ensureUserId();
-      await this.startVisit(userId);
+      userStore.initialize();
+
+      let activeUserId: string | null = userStore.userId;
+
+      if (activeUserId) {
+        await this.startVisit(activeUserId);
+      }
 
       const handleBeforeUnload = () => {
-        void this.stopVisit(userId);
+        if (activeUserId) {
+          void this.stopVisit(activeUserId);
+        }
       };
 
       window.addEventListener('beforeunload', handleBeforeUnload);
       window.addEventListener('visibilitychange', () => {
+        if (!activeUserId) return;
         if (document.visibilityState === 'hidden') {
-          void this.stopVisit(userId);
+          void this.stopVisit(activeUserId);
         } else if (document.visibilityState === 'visible') {
-          void this.startVisit(userId);
+          void this.startVisit(activeUserId);
+        }
+      });
+
+      userStore.$subscribe(async (_, state) => {
+        if (state.userId === activeUserId) return;
+
+        if (activeUserId) {
+          await this.stopVisit(activeUserId);
+          this.sessionId = null;
+        }
+
+        activeUserId = state.userId ?? null;
+
+        if (activeUserId) {
+          await this.startVisit(activeUserId);
         }
       });
     },
@@ -73,6 +96,7 @@ export const useMetricsStore = defineStore('metrics', {
           event: 'stop'
         });
         this.clearHeartbeat();
+        this.sessionId = null;
       } catch (error) {
         console.error(error);
       }

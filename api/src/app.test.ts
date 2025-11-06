@@ -75,6 +75,7 @@ describe('API surface', () => {
       totalTimeMs: 1000,
       avgPromptLength: 42,
       avgResponseLength: 64,
+      activity: [],
       recentInteractions: []
     };
     getUserStats.mockResolvedValueOnce(stats);

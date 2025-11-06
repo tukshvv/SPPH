@@ -6,24 +6,14 @@
           <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">SP</span>
           <span>SPPH Chat</span>
         </RouterLink>
-        <nav class="flex items-center gap-3 text-sm font-medium text-slate-600">
-          <RouterLink to="/" custom v-slot="{ href, navigate, isExactActive }">
-            <a
-              :href="href"
-              @click.prevent="navigate"
-              :class="navClasses(isExactActive)"
-            >
-              Чат
-            </a>
-          </RouterLink>
-          <RouterLink to="/dashboard" custom v-slot="{ href, navigate, isExactActive }">
-            <a
-              :href="href"
-              @click.prevent="navigate"
-              :class="navClasses(isExactActive)"
-            >
-              Дашборд
-            </a>
+        <nav class="flex items-center gap-2 text-sm font-medium text-slate-600">
+          <RouterLink
+            v-for="link in navLinks"
+            :key="link.to"
+            :to="link.to"
+            :class="navClasses(link)"
+          >
+            {{ link.label }}
           </RouterLink>
         </nav>
       </div>
@@ -36,12 +26,31 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router';
+import { RouterLink, RouterView, useRoute } from 'vue-router';
 import ToastHost from './components/ToastHost.vue';
 
-const navClasses = (active: boolean) =>
-  [
-    'rounded-full px-3 py-1 transition',
-    active ? 'bg-primary text-white shadow-sm' : 'hover:bg-primary/10 hover:text-primary'
+interface NavLink {
+  to: string;
+  label: string;
+  exact?: boolean;
+}
+
+const navLinks: NavLink[] = [
+  { to: '/', label: 'Главная', exact: true },
+  { to: '/chat', label: 'Чат' },
+  { to: '/agent', label: 'Агент' },
+  { to: '/docs', label: 'Документы' },
+  { to: '/profile', label: 'Профиль' },
+  { to: '/dashboard', label: 'Дашборд' }
+];
+
+const route = useRoute();
+
+const navClasses = (link: NavLink) => {
+  const isActive = link.exact ? route.path === link.to : route.path.startsWith(link.to) && link.to !== '/';
+  return [
+    'rounded-full px-3 py-1 transition hover:bg-primary/10 hover:text-primary',
+    isActive ? 'bg-primary text-white shadow-sm hover:text-white' : ''
   ];
+};
 </script>
