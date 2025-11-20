@@ -1,14 +1,10 @@
 import { detectIntent } from './intent.js';
-import {
-  getRecentConversation,
-  getUserProfile,
-  saveMessage,
-  type UserProfile
-} from './memory.js';
+import { getRecentConversation, saveMessage } from './memory.js';
 import type { LLMMessage } from '../providers/types.js';
 import { sendChatCompletion } from '../services/llmService.js';
 import type { AgentIntent } from './intent.js';
 import { answerWithRAG, type CitationReference } from './ragAgent.js';
+import { type UserProfilePayload, getUserProfile } from '../services/profileService.js';
 
 type ResponseMode = 'basic' | 'rag';
 
@@ -22,7 +18,7 @@ const shouldUseRAG = (mode: ResponseMode | 'auto', message: string) => {
   return ragTriggerPhrases.some((phrase) => normalized.includes(phrase));
 };
 
-const buildPersonaPrompt = (profile: UserProfile, intent: AgentIntent) => {
+const buildPersonaPrompt = (profile: UserProfilePayload, intent: AgentIntent) => {
   const persona = [
     'Ты — SPPH ассистент, дружелюбный и практичный наставник для студентов и исследователей.',
     'Отвечай на русском языке, структурируй информацию, делай выводы и предлагай следующие шаги.'
@@ -58,7 +54,7 @@ const buildPersonaPrompt = (profile: UserProfile, intent: AgentIntent) => {
   return persona.join('\n');
 };
 
-const buildProfileHint = (profile: UserProfile) => {
+const buildProfileHint = (profile: UserProfilePayload) => {
   if (!profile.major || profile.topics.length === 0) {
     return 'Заполните профиль (специализация и интересующие темы), чтобы ответы стали точнее.';
   }
@@ -74,7 +70,7 @@ interface ProcessMessageInput {
 interface ProcessMessageResult {
   text: string;
   intent: AgentIntent;
-  usedProfile: UserProfile;
+  usedProfile: UserProfilePayload;
   usedContextSize: number;
   usage?: { promptTokens?: number; completionTokens?: number };
   model?: string;
@@ -89,7 +85,7 @@ export const processMessage = async ({
   mode = 'auto'
 }: ProcessMessageInput): Promise<ProcessMessageResult> => {
   const intent = detectIntent(message);
-  const profile = getUserProfile(userId);
+  const profile = await getUserProfile(userId);
   const context = getRecentConversation(userId, 12);
   const systemPrompt = buildPersonaPrompt(profile, intent);
 

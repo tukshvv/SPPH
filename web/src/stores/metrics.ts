@@ -34,10 +34,14 @@ export const useMetricsStore = defineStore('metrics', {
       this.isBound = true;
       const userStore = useUserStore();
       const userId = userStore.ensureUserId();
-      await this.startVisit(userId);
+      if (userStore.authToken) {
+        await this.startVisit(userId);
+      }
 
       const handleBeforeUnload = () => {
-        void this.stopVisit(userId);
+        if (userStore.authToken) {
+          void this.stopVisit(userId);
+        }
       };
 
       window.addEventListener('beforeunload', handleBeforeUnload);
@@ -50,12 +54,14 @@ export const useMetricsStore = defineStore('metrics', {
       });
     },
     async startVisit(userId: string) {
+      const userStore = useUserStore();
+      if (!userStore.authToken) return;
       try {
         const response = await apiClient.sendVisitEvent({
           userId,
           sessionId: this.sessionId ?? undefined,
           event: 'start'
-        });
+        }, userStore.authToken);
         if (response.sessionId) {
           this.sessionId = response.sessionId;
         }
@@ -65,26 +71,29 @@ export const useMetricsStore = defineStore('metrics', {
       }
     },
     async stopVisit(userId: string) {
+      const userStore = useUserStore();
+      if (!userStore.authToken) return;
       try {
         if (!this.sessionId) return;
         await apiClient.sendVisitEvent({
           userId,
           sessionId: this.sessionId,
           event: 'stop'
-        });
+        }, userStore.authToken);
         this.clearHeartbeat();
       } catch (error) {
         console.error(error);
       }
     },
     async heartbeat(userId: string) {
-      if (!this.sessionId) return;
+      const userStore = useUserStore();
+      if (!this.sessionId || !userStore.authToken) return;
       try {
         await apiClient.sendVisitEvent({
           userId,
           sessionId: this.sessionId,
           event: 'heartbeat'
-        });
+        }, userStore.authToken);
       } catch (error) {
         console.error(error);
       }
@@ -102,10 +111,15 @@ export const useMetricsStore = defineStore('metrics', {
       }
     },
     async fetchStats(userId: string) {
+      const userStore = useUserStore();
+      if (!userStore.authToken) {
+        this.statsError = 'Необходимо войти, чтобы посмотреть статистику';
+        return;
+      }
       this.statsLoading = true;
       this.statsError = null;
       try {
-        this.stats = await apiClient.fetchUserStats(userId);
+        this.stats = await apiClient.fetchUserStats(userId, userStore.authToken);
       } catch (error) {
         this.statsError = error instanceof Error ? error.message : 'Не удалось загрузить статистику';
       } finally {

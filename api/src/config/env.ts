@@ -6,6 +6,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(5050),
   DATABASE_URL: z.string().optional(),
+  APP_LOGIN_PASSWORD: z.string().min(6).default('spph-login'),
   LLM_PROVIDER: z.enum(['openai', 'openrouter', 'dummy']).default('dummy'),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().min(1).default('gpt-3.5-turbo'),

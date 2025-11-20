@@ -11,6 +11,7 @@ model User {
   id           String        @id
   sessions     Session[]
   interactions Interaction[]
+  profile      UserProfile?
   createdAt    DateTime      @default(now())
 }
 
@@ -43,4 +44,16 @@ model TokenUsage {
   promptTokens     Int
   completionTokens Int
   costUsd          Decimal?
+}
+
+model UserProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  major     String?
+  level     String?
+  topics    String   @default("[]")
+  schedule  String   @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
