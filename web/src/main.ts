@@ -3,8 +3,7 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
 import './assets/main.css';
-import { useUserStore } from './stores/user';
-import { useMetricsStore } from './stores/metrics';
+import { useAuthStore } from './stores/auth';
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -12,10 +11,7 @@ const pinia = createPinia();
 app.use(pinia);
 app.use(router);
 
-const userStore = useUserStore(pinia);
-userStore.ensureUserId();
-
-const metricsStore = useMetricsStore(pinia);
-metricsStore.bindLifecycle();
+const auth = useAuthStore(pinia);
+auth.hydrate();
 
 app.mount('#app');

@@ -1,141 +1,110 @@
 import { defineStore } from 'pinia';
-import { apiClient } from '../lib/api';
-import { useUserStore } from './user';
-import { useMetricsStore } from './metrics';
-import { useNotificationStore } from './notifications';
-
-type Role = 'system' | 'user' | 'assistant';
-
-export interface ChatMessage {
-  id: string;
-  role: Role;
-  content: string;
-  createdAt: string;
-  pending?: boolean;
-  intent?: 'qa' | 'search' | 'explain';
-  usage?: {
-    promptTokens?: number;
-    completionTokens?: number;
-  };
-  profileHint?: string;
-  citations?: Array<{ docId: string; chunkIdx: number }>;
-  responseMode?: 'basic' | 'rag';
-}
+import { apiClient, type ActivitySummary, type ChatMessage, type ChatSessionDetail, type SessionSummary } from '../lib/api';
+import { useAuthStore } from './auth';
 
 interface ChatState {
-  messages: ChatMessage[];
-  isSending: boolean;
-  mode: 'auto' | 'rag' | 'basic';
+  sessions: SessionSummary[];
+  currentSession: ChatSessionDetail | null;
+  loading: boolean;
+  error: string | null;
+  sending: boolean;
+  activity: ActivitySummary | null;
 }
 
 export const useChatStore = defineStore('chat', {
   state: (): ChatState => ({
-    messages: [
-      {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: 'Привет! Я помогу сформировать идеи и ответы для команды SPPH. Чем займёмся сегодня?',
-        createdAt: new Date().toISOString()
-      }
-    ],
-    isSending: false,
-    mode: 'auto'
+    sessions: [],
+    currentSession: null,
+    loading: false,
+    error: null,
+    sending: false,
+    activity: null
   }),
   actions: {
-    addMessage(message: ChatMessage) {
-      this.messages.push(message);
-    },
-    resetConversation() {
-      this.messages = [
-        {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: 'Диалог сброшен. Чем могу помочь сейчас?',
-          createdAt: new Date().toISOString()
-        }
-      ];
-      const metricsStore = useMetricsStore();
-      metricsStore.resetRequests();
-    },
-    setMode(mode: 'auto' | 'rag' | 'basic') {
-      this.mode = mode;
-    },
-    async sendPrompt(content: string) {
-      const trimmed = content.trim();
-      if (!trimmed || this.isSending) return;
-      const userStore = useUserStore();
-      const metricsStore = useMetricsStore();
-      const notifications = useNotificationStore();
-      const userId = userStore.ensureUserId();
-      if (!userStore.authToken) {
-        notifications.push({
-          title: 'Нужен вход',
-          description: 'Авторизуйтесь перед отправкой сообщений в чат',
-          tone: 'error'
-        });
-        this.messages = this.messages.filter((msg) => msg.id !== placeholder.id);
-        return;
-      }
-
-      const userMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'user',
-        content: trimmed,
-        createdAt: new Date().toISOString()
-      };
-      this.addMessage(userMessage);
-
-      const placeholder: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: '...',
-        createdAt: new Date().toISOString(),
-        pending: true
-      };
-      this.addMessage(placeholder);
-
-      this.isSending = true;
+    async fetchSessions() {
+      const auth = useAuthStore();
+      auth.hydrate();
+      if (!auth.token) return;
+      this.loading = true;
       try {
-        const response = await apiClient.chat(
-          {
-            userId,
-            message: trimmed,
-            mode: this.mode
-          },
-          userStore.authToken
-        );
-        const lastIndex = this.messages.findIndex((msg) => msg.id === placeholder.id);
-        if (lastIndex !== -1) {
-          this.messages.splice(lastIndex, 1, {
-            ...placeholder,
-            pending: false,
-            content: response.reply,
-            createdAt: new Date().toISOString(),
-            intent: response.intent,
-            usage: response.usage,
-            profileHint: response.profileHint,
-            citations: response.citations,
-            responseMode: response.mode
-          });
-        }
-        metricsStore.incrementRequests();
-        if (response.profileHint) {
-          notifications.push({
-            title: 'Уточните профиль',
-            description: response.profileHint,
-            tone: 'info'
-          });
+        const { sessions } = await apiClient.listSessions(auth.token);
+        this.sessions = sessions;
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : 'Failed to load sessions';
+      } finally {
+        this.loading = false;
+      }
+    },
+    async fetchActivity() {
+      const auth = useAuthStore();
+      auth.hydrate();
+      if (!auth.token) return;
+      try {
+        this.activity = await apiClient.getActivity(auth.token);
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : 'Failed to load activity';
+      }
+    },
+    async createSession(
+      title: string,
+      meta?: { mode?: string; subject?: string | null; goal?: string | null; dueDate?: string | null }
+    ) {
+      const auth = useAuthStore();
+      if (!auth.token) throw new Error('Not authenticated');
+      const { session } = await apiClient.createSession({ title, ...meta }, auth.token);
+      this.sessions.unshift(session);
+      this.currentSession = { ...session, messages: [] };
+      return session.id;
+    },
+    async loadSession(sessionId: string) {
+      const auth = useAuthStore();
+      if (!auth.token) throw new Error('Not authenticated');
+      this.loading = true;
+      try {
+        this.currentSession = await apiClient.getSession(sessionId, auth.token);
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : 'Failed to load session';
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+    async sendMessage(content: string) {
+      const auth = useAuthStore();
+      if (!auth.token || !this.currentSession) throw new Error('Not authenticated');
+      this.sending = true;
+      try {
+        const sessionId = this.currentSession.id;
+        const { reply } = await apiClient.sendMessage(sessionId, { content }, auth.token);
+        const userMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'user',
+          content,
+          createdAt: new Date().toISOString()
+        };
+        this.currentSession.messages.push(userMessage);
+        this.currentSession.messages.push(reply);
+        await this.fetchActivity();
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : 'Failed to send message';
+        throw error;
+      } finally {
+        this.sending = false;
+      }
+    },
+    async react(messageId: string, value: number) {
+      const auth = useAuthStore();
+      if (!auth.token) return;
+      try {
+        await apiClient.sendFeedback({ messageId, value }, auth.token);
+        if (this.currentSession) {
+          const msg = this.currentSession.messages.find((m) => m.id === messageId);
+          if (msg) {
+            msg.feedback = { id: messageId, value };
+          }
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-        notifications.push({
-          title: 'Не удалось получить ответ',
-          description: errorMessage,
-          tone: 'error'
-        });
-        this.messages = this.messages.filter((msg) => msg.id !== placeholder.id);
-      } finally {
-        this.isSending = false;
+        this.error = error instanceof Error ? error.message : 'Failed to submit feedback';
       }
     }
   }

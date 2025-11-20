@@ -1,23 +1,25 @@
 import { z } from 'zod';
 
+export const sessionSchema = z.object({
+  body: z.object({
+    title: z.string().min(1).max(120).optional(),
+    mode: z.string().min(2).max(50).optional(),
+    subject: z.string().min(1).max(120).optional().nullable(),
+    goal: z.string().min(1).max(240).optional().nullable(),
+    dueDate: z.string().datetime().optional().nullable()
+  })
+});
+
 export const messageSchema = z.object({
-  role: z.enum(['system', 'user', 'assistant']),
-  content: z.string().min(1).max(4000)
+  body: z.object({
+    content: z.string().min(1).max(4000),
+    model: z.string().optional()
+  })
 });
 
-export const chatRequestSchema = z.object({
-  body: z
-    .object({
-      userId: z.string().uuid(),
-      sessionId: z.string().uuid().optional(),
-      message: z.string().min(1).max(4000).optional(),
-      messages: z.array(messageSchema).min(1).optional(),
-      mode: z.enum(['auto', 'rag', 'basic']).optional()
-    })
-    .refine((data) => Boolean(data.message?.trim() ?? data.messages?.length), {
-      message: 'Either message or messages must be provided',
-      path: ['message']
-    })
+export const feedbackSchema = z.object({
+  body: z.object({
+    messageId: z.string().uuid(),
+    value: z.number().min(-1).max(1)
+  })
 });
-
-export type ChatRequestBody = z.infer<typeof chatRequestSchema>['body'];
