@@ -50,3 +50,26 @@ export const generateChatReply = async ({ messages, modelOverride }: GenerateCha
 };
 
 export type GenerateChatReplyResult = Awaited<ReturnType<typeof generateChatReply>>;
+
+export const generateTasksFromText = async (text: string) => {
+  const client = getClient();
+  const completion = await client.chat.completions.create({
+    model: env.OPENAI_MODEL,
+    temperature: 0.2,
+    messages: [
+      {
+        role: 'system',
+        content:
+          'Extract study tasks from the user text. Respond ONLY with JSON matching {"tasks":[{"title":"","description?":"","dueDate?":"YYYY-MM-DD"}]} and keep titles short.'
+      },
+      { role: 'user', content: text }
+    ]
+  });
+
+  try {
+    const raw = completion.choices[0]?.message?.content ?? '{}';
+    return JSON.parse(raw);
+  } catch (error) {
+    throw new HttpError(500, 'TASK_PARSE_ERROR', 'Failed to parse tasks from AI response');
+  }
+};

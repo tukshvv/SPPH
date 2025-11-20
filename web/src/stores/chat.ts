@@ -45,10 +45,13 @@ export const useChatStore = defineStore('chat', {
         this.error = error instanceof Error ? error.message : 'Failed to load activity';
       }
     },
-    async createSession(title: string) {
+    async createSession(
+      title: string,
+      meta?: { mode?: string; subject?: string | null; goal?: string | null; dueDate?: string | null }
+    ) {
       const auth = useAuthStore();
       if (!auth.token) throw new Error('Not authenticated');
-      const { session } = await apiClient.createSession({ title }, auth.token);
+      const { session } = await apiClient.createSession({ title, ...meta }, auth.token);
       this.sessions.unshift(session);
       this.currentSession = { ...session, messages: [] };
       return session.id;

@@ -2,11 +2,46 @@ import { prisma } from '../utils/prisma.js';
 import { HttpError } from '../utils/errors.js';
 import { generateChatReply, type ChatMessageInput } from './openaiChatService.js';
 
-export const createSession = async (userId: string, title: string) => {
+const buildContextPrompt = async (
+  userId: string,
+  session: { mode: string; subject: string | null; goal: string | null; dueDate: Date | null },
+  notes: { title: string; content: string; subject: string | null }[]
+) => {
+  const preference = await prisma.userPreference.findUnique({ where: { userId } });
+  const notesText =
+    notes.length === 0
+      ? 'No prior notes provided.'
+      : notes
+          .map((note, index) => {
+            const snippet = note.content.length > 320 ? `${note.content.slice(0, 317)}...` : note.content;
+            return `${index + 1}) ${note.title}${note.subject ? ` [${note.subject}]` : ''}: ${snippet}`;
+          })
+          .join('\n');
+
+  const preferenceText = `User preferences:\n- Preferred language: ${preference?.preferredLanguage ?? 'en'}\n- Response style: ${
+    preference?.responseStyle ?? 'balanced'
+  } (concise=short, balanced=medium, detailed=expanded).`;
+
+  const meta = `You are SPPH, a study assistant. Mode: ${session.mode}. Subject: ${
+    session.subject ?? 'General'
+  }. Student goal: ${session.goal ?? 'not specified'}. Due date: ${session.dueDate ?? 'none provided'}.`;
+
+  return `${meta}\n${preferenceText}\nRelevant notes from the student (may be incomplete):\n${notesText}\nPlease keep answers actionable for students.`;
+};
+
+export const createSession = async (
+  userId: string,
+  title: string,
+  meta?: { mode?: string; subject?: string | null; goal?: string | null; dueDate?: Date | null }
+) => {
   const session = await prisma.chatSession.create({
     data: {
       userId,
-      title
+      title,
+      mode: meta?.mode ?? 'general',
+      subject: meta?.subject ?? null,
+      goal: meta?.goal ?? null,
+      dueDate: meta?.dueDate ?? null
     }
   });
 
@@ -26,6 +61,10 @@ export const listSessions = (userId: string) =>
     select: {
       id: true,
       title: true,
+      mode: true,
+      subject: true,
+      goal: true,
+      dueDate: true,
       createdAt: true,
       updatedAt: true,
       lastMessageAt: true
@@ -61,6 +100,15 @@ export const appendMessage = async (
     throw new HttpError(404, 'SESSION_NOT_FOUND', 'Chat session not found');
   }
 
+  const notes = session.subject
+    ? await prisma.note.findMany({
+        where: { userId, subject: session.subject },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+        select: { title: true, content: true, subject: true }
+      })
+    : [];
+
   await prisma.chatMessage.create({
     data: {
       chatSessionId: sessionId,
@@ -76,7 +124,11 @@ export const appendMessage = async (
     select: { role: true, content: true }
   });
 
-  const aiReply = await generateChatReply({ messages: history, modelOverride });
+  const context = await buildContextPrompt(userId, session, notes);
+  const aiReply = await generateChatReply({
+    messages: [{ role: 'system', content: context }, ...history],
+    modelOverride
+  });
 
   const assistantMessage = await prisma.chatMessage.create({
     data: {

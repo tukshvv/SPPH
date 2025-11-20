@@ -20,11 +20,30 @@
         </button>
         <p v-if="chat.sessions.length === 0" class="text-sm text-slate-500">No sessions yet.</p>
       </div>
+      <div class="mt-4 rounded-xl border border-orange-100 bg-orange-50/60 p-3">
+        <h3 class="text-sm font-semibold text-slate-900">Notes for {{ chat.currentSession?.subject || 'All' }}</h3>
+        <div class="mt-2 space-y-2">
+          <p v-if="notes.length === 0" class="text-xs text-slate-500">No notes yet.</p>
+          <div v-for="note in notes" :key="note.id" class="rounded-lg bg-white/70 p-2 shadow-sm">
+            <p class="text-sm font-semibold text-slate-900">{{ note.title }}</p>
+            <p class="text-xs text-slate-500 line-clamp-3">{{ note.content }}</p>
+          </div>
+        </div>
+      </div>
     </aside>
 
     <section class="lg:col-span-2 rounded-2xl bg-white/80 p-6 shadow ring-1 ring-orange-100">
-      <div class="mb-4 flex items-center justify-between gap-3">
-        <h1 class="text-xl font-bold text-slate-900">Chat</h1>
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 class="text-xl font-bold text-slate-900">Chat</h1>
+          <p class="text-sm text-slate-500">
+            Mode: {{ chat.currentSession?.mode ?? 'general' }} • Subject: {{ chat.currentSession?.subject ?? 'General' }}
+          </p>
+          <p v-if="chat.currentSession?.goal" class="text-xs text-slate-500">Goal: {{ chat.currentSession?.goal }}</p>
+          <p v-if="chat.currentSession?.dueDate" class="text-xs text-orange-600">
+            Due: {{ new Date(chat.currentSession!.dueDate!).toLocaleDateString() }}
+          </p>
+        </div>
         <p class="text-sm text-slate-500">Powered by OpenAI</p>
       </div>
       <div class="mb-4 max-h-[60vh] space-y-3 overflow-y-auto">
@@ -37,7 +56,7 @@
           </span>
           <div class="flex-1 rounded-xl bg-orange-50/60 p-3 shadow-inner">
             <p class="text-slate-800">{{ msg.content }}</p>
-            <div v-if="msg.role === 'assistant'" class="mt-2 flex items-center gap-2 text-xs text-slate-500">
+            <div v-if="msg.role === 'assistant'" class="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
               <button class="rounded-full border border-orange-100 px-2 py-1 hover:bg-orange-100" @click="() => react(msg.id, 1)">
                 👍
               </button>
@@ -45,6 +64,12 @@
                 👎
               </button>
               <span v-if="msg.feedback" class="font-medium text-orange-600">Feedback saved</span>
+              <button
+                class="rounded-full border border-orange-200 px-2 py-1 font-semibold text-orange-600 hover:bg-orange-100"
+                @click="() => createTasks(msg.content)"
+              >
+                Create tasks from this answer
+              </button>
             </div>
           </div>
         </div>
@@ -75,19 +100,27 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from '../stores/chat';
+import { useTaskStore } from '../stores/tasks';
+import { useNoteStore } from '../stores/notes';
 
 const chat = useChatStore();
+const tasks = useTaskStore();
+const noteStore = useNoteStore();
 const route = useRoute();
 const router = useRouter();
 const draft = ref('');
 
 const currentId = computed(() => route.params.id as string | undefined);
+const notes = computed(() => noteStore.notes.slice(0, 4));
 
 const navigateTo = (id: string) => router.push({ name: 'chat', params: { id } });
 
 const loadSession = async () => {
   if (currentId.value) {
     await chat.loadSession(currentId.value);
+    if (chat.currentSession?.subject) {
+      await noteStore.fetch(chat.currentSession.subject);
+    }
   } else {
     const sessionId = await chat.createSession('New chat');
     router.replace({ name: 'chat', params: { id: sessionId } });
@@ -107,6 +140,10 @@ const newSession = async () => {
   router.push({ name: 'chat', params: { id: sessionId } });
 };
 
+const createTasks = async (text: string) => {
+  await tasks.createFromText(text, chat.currentSession?.id);
+};
+
 onMounted(async () => {
   await chat.fetchSessions();
   await loadSession();
@@ -117,6 +154,9 @@ watch(
   async (id, old) => {
     if (id && id !== old) {
       await chat.loadSession(String(id));
+      if (chat.currentSession?.subject) {
+        await noteStore.fetch(chat.currentSession.subject);
+      }
     }
   }
 );

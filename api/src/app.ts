@@ -9,6 +9,10 @@ import { requestContext } from './middleware/requestContext.js';
 import { requestLogger } from './middleware/logger.js';
 import { userRouter } from './routes/user.js';
 import { authRouter } from './routes/auth.js';
+import { taskRouter } from './routes/tasks.js';
+import { noteRouter } from './routes/notes.js';
+import { preferenceRouter } from './routes/preferences.js';
+import { dashboardRouter } from './routes/dashboard.js';
 
 const allowedOrigins = [process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173'];
 
@@ -52,6 +56,10 @@ export const createApp = () => {
   app.use('/api/auth', authRouter);
   app.use('/api/chat', chatLimiter, chatRouter);
   app.use('/api/user', userRouter);
+  app.use('/api/tasks', taskRouter);
+  app.use('/api/notes', noteRouter);
+  app.use('/api/preferences', preferenceRouter);
+  app.use('/api/dashboard', dashboardRouter);
 
   app.use(errorHandler);
 

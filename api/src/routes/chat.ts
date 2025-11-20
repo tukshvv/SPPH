@@ -22,8 +22,13 @@ chatRouter.get('/sessions', async (req, res, next) => {
 chatRouter.post('/sessions', validate(sessionSchema), async (req, res, next) => {
   try {
     const userId = req.authUserId!;
-    const { title } = req.body;
-    const session = await createSession(userId, title ?? 'New Chat');
+    const { title, mode, subject, goal, dueDate } = req.body;
+    const session = await createSession(userId, title ?? 'New Chat', {
+      mode,
+      subject: subject ?? null,
+      goal: goal ?? null,
+      dueDate: dueDate ? new Date(dueDate) : null
+    });
     res.status(201).json({ session });
   } catch (error) {
     next(error);

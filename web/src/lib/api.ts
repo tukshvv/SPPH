@@ -6,6 +6,10 @@ export interface AuthResponse {
 export interface SessionSummary {
   id: string;
   title: string;
+  mode: string;
+  subject?: string | null;
+  goal?: string | null;
+  dueDate?: string | null;
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string;
@@ -21,6 +25,39 @@ export interface ChatMessage {
 
 export interface ChatSessionDetail extends SessionSummary {
   messages: ChatMessage[];
+}
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: string;
+  dueDate?: string | null;
+  chatSessionId?: string | null;
+  createdAt: string;
+}
+
+export interface NoteItem {
+  id: string;
+  title: string;
+  subject?: string | null;
+  content: string;
+  updatedAt: string;
+}
+
+export interface PreferencesPayload {
+  preferredLanguage: string;
+  responseStyle: string;
+}
+
+export interface DashboardSummary {
+  totalMessages: number;
+  totalSessions: number;
+  totalChats: number;
+  tasksDone: number;
+  tasksTodo: number;
+  mostUsedMode: string;
+  recentSubjects: (string | null)[];
 }
 
 export interface ActivitySummary {
@@ -131,5 +168,61 @@ export const apiClient = {
       body: JSON.stringify(payload),
       authToken
     });
+  },
+  listTasks(authToken: string, status?: string) {
+    return request<{ tasks: TaskItem[] }>('/api/tasks', { authToken, params: status ? { status } : undefined });
+  },
+  createTask(payload: Partial<TaskItem>, authToken: string) {
+    return request<{ task: TaskItem }>('/api/tasks', { method: 'POST', body: JSON.stringify(payload), authToken });
+  },
+  updateTask(id: string, payload: Partial<TaskItem>, authToken: string) {
+    return request<{ task: TaskItem }>(`/api/tasks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+      authToken
+    });
+  },
+  deleteTask(id: string, authToken: string) {
+    return request(`/api/tasks/${id}`, { method: 'DELETE', authToken });
+  },
+  createTasksFromText(payload: { text: string; chatSessionId?: string }, authToken: string) {
+    return request<{ tasks: TaskItem[] }>('/api/tasks/from-text', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      authToken
+    });
+  },
+  listNotes(authToken: string, subject?: string) {
+    return request<{ notes: NoteItem[] }>('/api/notes', { authToken, params: subject ? { subject } : undefined });
+  },
+  createNote(payload: { title: string; subject?: string | null; content: string }, authToken: string) {
+    return request<{ note: NoteItem }>('/api/notes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      authToken
+    });
+  },
+  updateNote(id: string, payload: Partial<NoteItem>, authToken: string) {
+    return request<{ note: NoteItem }>(`/api/notes/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+      authToken
+    });
+  },
+  deleteNote(id: string, authToken: string) {
+    return request(`/api/notes/${id}`, { method: 'DELETE', authToken });
+  },
+  getPreferences(authToken: string) {
+    return request<PreferencesPayload>('/api/preferences/me', { authToken });
+  },
+  updatePreferences(payload: Partial<PreferencesPayload>, authToken: string) {
+    return request<PreferencesPayload>('/api/preferences/me', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+      authToken
+    });
+  },
+  getDashboard(authToken: string) {
+    return request<DashboardSummary>('/api/dashboard/me', { authToken });
   }
 };

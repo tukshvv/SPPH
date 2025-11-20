@@ -2,7 +2,11 @@ import { z } from 'zod';
 
 export const sessionSchema = z.object({
   body: z.object({
-    title: z.string().min(1).max(120).optional()
+    title: z.string().min(1).max(120).optional(),
+    mode: z.string().min(2).max(50).optional(),
+    subject: z.string().min(1).max(120).optional().nullable(),
+    goal: z.string().min(1).max(240).optional().nullable(),
+    dueDate: z.string().datetime().optional().nullable()
   })
 });
 
