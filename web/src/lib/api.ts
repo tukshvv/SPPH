@@ -1,3 +1,46 @@
+export interface AuthResponse {
+  token: string;
+  user: { id: string; name: string; email: string };
+}
+
+export interface SessionSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  createdAt: string;
+  feedback?: { id: string; value: number } | null;
+}
+
+export interface ChatSessionDetail extends SessionSummary {
+  messages: ChatMessage[];
+}
+
+export interface ActivitySummary {
+  totalMessages: number;
+  totalSessions: number;
+  lastActiveAt: string | null;
+  sessions: SessionSummary[];
+}
+
+export interface ProfilePayload {
+  id: string;
+  name: string;
+  email: string;
+  activity?: {
+    totalMessages: number;
+    totalSessions: number;
+    lastActiveAt: string | null;
+  };
+}
+
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number>;
   authToken?: string | null;
@@ -8,9 +51,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5050
 const buildUrl = (path: string, params?: Record<string, string | number>) => {
   if (!params) return `${API_BASE_URL}${path}`;
   const url = new URL(`${API_BASE_URL}${path}`);
-  Object.entries(params).forEach(([key, value]) => {
-    url.searchParams.append(key, String(value));
-  });
+  Object.entries(params).forEach(([key, value]) => url.searchParams.append(key, String(value)));
   return url.toString();
 };
 
@@ -24,134 +65,71 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     }
   });
 
+  const contentType = response.headers.get('content-type');
+  const isJson = contentType?.includes('application/json');
   if (!response.ok) {
-    const contentType = response.headers.get('content-type');
-    if (contentType?.includes('application/json')) {
+    if (isJson) {
       const payload = await response.json();
       const message = payload?.error?.message ?? payload?.message ?? response.statusText;
       throw new Error(message);
     }
-    const errorText = await response.text();
-    throw new Error(errorText || response.statusText);
+    throw new Error(response.statusText);
   }
 
-  return response.json() as Promise<T>;
-}
-
-export interface ChatRequestPayload {
-  userId: string;
-  message: string;
-  mode?: 'auto' | 'rag' | 'basic';
-}
-
-export interface ChatResponsePayload {
-  reply: string;
-  intent: 'qa' | 'search' | 'explain';
-  usage: {
-    promptTokens?: number;
-    completionTokens?: number;
-  };
-  profileHint?: string;
-  citations: Array<{ docId: string; chunkIdx: number }>;
-  mode: 'basic' | 'rag';
-}
-
-export interface UserProfilePayload {
-  major?: string;
-  topics: string[];
-  level?: string;
-  schedule: ScheduleItem[];
-}
-
-export interface ProfileUpdatePayload {
-  userId: string;
-  patch: Partial<UserProfilePayload> & { topics?: string[]; schedule?: ScheduleItem[] };
-}
-
-export interface LoginPayload {
-  userId: string;
-  password: string;
-}
-
-export interface ScheduleItem {
-  id?: string;
-  title: string;
-  day: string;
-  time: string;
-  location?: string;
-  description?: string;
-}
-
-export interface UserStatsResponse {
-  totalRequests: number;
-  sessionsCount: number;
-  totalTimeMs: number;
-  avgPromptLength: number;
-  avgResponseLength: number;
-  recentInteractions: Array<{
-    id: string;
-    createdAt: string;
-    promptLen: number;
-    responseLen: number;
-    model: string;
-    promptTokens: number;
-    completionTokens: number;
-    costUsd: number;
-  }>;
-}
-
-export interface VisitEventPayload {
-  userId: string;
-  sessionId?: string;
-  event: 'start' | 'stop' | 'heartbeat';
-  timestamp?: string;
+  return (isJson ? response.json() : (undefined as unknown)) as Promise<T>;
 }
 
 export const apiClient = {
-  chat(payload: ChatRequestPayload, authToken?: string) {
-    return request<ChatResponsePayload>('/api/chat', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      authToken
-    });
-  },
-  ingestDocuments(
-    docs: Array<{ id?: string; text: string; meta?: Record<string, unknown> }>,
-    authToken?: string
-  ) {
-    return request<{ inserted: number; chunks: number }>('/api/ingest', {
-      method: 'POST',
-      body: JSON.stringify({ docs }),
-      authToken
-    });
-  },
-  fetchUserProfile(userId: string, authToken: string) {
-    return request<UserProfilePayload>('/api/user/profile', {
-      params: { userId },
-      authToken
-    });
-  },
-  updateUserProfile(payload: ProfileUpdatePayload, authToken: string) {
-    return request<UserProfilePayload>('/api/user/profile', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      authToken
-    });
-  },
-  fetchUserStats(userId: string, authToken: string) {
-    return request<UserStatsResponse>(`/api/users/${userId}/stats`, { authToken });
-  },
-  sendVisitEvent(payload: VisitEventPayload, authToken: string) {
-    return request<{ sessionId?: string }>('/api/metrics/visit', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      authToken
-    });
-  },
-  login(payload: LoginPayload) {
-    return request<{ token: string; userId: string }>('/api/auth/login', {
+  register(payload: { name: string; email: string; password: string }) {
+    return request<AuthResponse>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload)
+    });
+  },
+  login(payload: { email: string; password: string }) {
+    return request<AuthResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+  getProfile(authToken: string) {
+    return request<ProfilePayload>('/api/user/profile', { authToken });
+  },
+  updateProfile(payload: { name: string }, authToken: string) {
+    return request<ProfilePayload>('/api/user/profile', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      authToken
+    });
+  },
+  getActivity(authToken: string) {
+    return request<ActivitySummary>('/api/chat/activity', { authToken });
+  },
+  listSessions(authToken: string) {
+    return request<{ sessions: SessionSummary[] }>('/api/chat/sessions', { authToken });
+  },
+  createSession(payload: { title: string }, authToken: string) {
+    return request<{ session: SessionSummary }>('/api/chat/sessions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      authToken
+    });
+  },
+  getSession(sessionId: string, authToken: string) {
+    return request<ChatSessionDetail>(`/api/chat/sessions/${sessionId}`, { authToken });
+  },
+  sendMessage(sessionId: string, payload: { content: string; model?: string }, authToken: string) {
+    return request<{ reply: ChatMessage; usage?: unknown }>(`/api/chat/sessions/${sessionId}/message`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      authToken
+    });
+  },
+  sendFeedback(payload: { messageId: string; value: number }, authToken: string) {
+    return request<{ feedback: { id: string; value: number } }>('/api/chat/feedback', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      authToken
     });
   }
 };

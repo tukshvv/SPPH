@@ -1,47 +1,44 @@
 <template>
-  <div class="min-h-screen flex flex-col">
-    <header class="border-b border-slate-200 bg-white/70 backdrop-blur">
-      <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
-        <RouterLink to="/" class="flex items-center gap-2 text-lg font-semibold text-primary hover:text-primary-hover">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">SP</span>
-          <span>SPPH Chat</span>
+  <div class="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100 text-slate-900">
+    <header v-if="auth.isAuthenticated" class="border-b border-orange-100 bg-white/80 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <RouterLink to="/home" class="flex items-center gap-3 text-lg font-bold text-orange-600">
+          <span class="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-xl">⚡</span>
+          <span>SPPH</span>
         </RouterLink>
-        <nav class="flex items-center gap-3 text-sm font-medium text-slate-600">
-          <RouterLink to="/" custom v-slot="{ href, navigate, isExactActive }">
-            <a
-              :href="href"
-              @click.prevent="navigate"
-              :class="navClasses(isExactActive)"
-            >
-              Чат
-            </a>
-          </RouterLink>
-          <RouterLink to="/dashboard" custom v-slot="{ href, navigate, isExactActive }">
-            <a
-              :href="href"
-              @click.prevent="navigate"
-              :class="navClasses(isExactActive)"
-            >
-              Дашборд
-            </a>
-          </RouterLink>
+        <nav class="flex items-center gap-3 text-sm font-medium text-slate-700">
+          <RouterLink to="/home" class="nav-link" active-class="active">Home</RouterLink>
+          <RouterLink to="/chat" class="nav-link" active-class="active">Chat</RouterLink>
+          <RouterLink to="/profile" class="nav-link" active-class="active">Profile</RouterLink>
+          <button class="rounded-full bg-orange-500 px-3 py-1 text-white shadow hover:bg-orange-600" @click="logout">Logout</button>
         </nav>
       </div>
     </header>
-    <main class="flex-1">
+    <main class="mx-auto max-w-6xl px-4 py-8">
       <RouterView />
     </main>
-    <ToastHost />
   </div>
 </template>
 
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router';
-import ToastHost from './components/ToastHost.vue';
+import { RouterLink, RouterView, useRouter } from 'vue-router';
+import { useAuthStore } from './stores/auth';
 
-const navClasses = (active: boolean) =>
-  [
-    'rounded-full px-3 py-1 transition',
-    active ? 'bg-primary text-white shadow-sm' : 'hover:bg-primary/10 hover:text-primary'
-  ];
+const auth = useAuthStore();
+auth.hydrate();
+const router = useRouter();
+
+const logout = () => {
+  auth.clear();
+  router.push({ name: 'login' });
+};
 </script>
+
+<style scoped>
+.nav-link {
+  @apply rounded-full px-3 py-1 transition hover:bg-orange-100 hover:text-orange-600;
+}
+.nav-link.active {
+  @apply bg-orange-500 text-white shadow;
+}
+</style>
