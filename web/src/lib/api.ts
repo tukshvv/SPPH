@@ -1,5 +1,6 @@
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number>;
+  authToken?: string | null;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5050';
@@ -18,7 +19,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(options.headers ?? {})
+      ...(options.headers ?? {}),
+      ...(options.authToken ? { Authorization: `Bearer ${options.authToken}` } : {})
     }
   });
 
@@ -58,11 +60,26 @@ export interface UserProfilePayload {
   major?: string;
   topics: string[];
   level?: string;
+  schedule: ScheduleItem[];
 }
 
 export interface ProfileUpdatePayload {
   userId: string;
-  patch: Partial<UserProfilePayload> & { topics?: string[] };
+  patch: Partial<UserProfilePayload> & { topics?: string[]; schedule?: ScheduleItem[] };
+}
+
+export interface LoginPayload {
+  userId: string;
+  password: string;
+}
+
+export interface ScheduleItem {
+  id?: string;
+  title: string;
+  day: string;
+  time: string;
+  location?: string;
+  description?: string;
 }
 
 export interface UserStatsResponse {
@@ -91,34 +108,48 @@ export interface VisitEventPayload {
 }
 
 export const apiClient = {
-  chat(payload: ChatRequestPayload) {
+  chat(payload: ChatRequestPayload, authToken?: string) {
     return request<ChatResponsePayload>('/api/chat', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      authToken
     });
   },
-  ingestDocuments(docs: Array<{ id?: string; text: string; meta?: Record<string, unknown> }>) {
+  ingestDocuments(
+    docs: Array<{ id?: string; text: string; meta?: Record<string, unknown> }>,
+    authToken?: string
+  ) {
     return request<{ inserted: number; chunks: number }>('/api/ingest', {
       method: 'POST',
-      body: JSON.stringify({ docs })
+      body: JSON.stringify({ docs }),
+      authToken
     });
   },
-  fetchUserProfile(userId: string) {
+  fetchUserProfile(userId: string, authToken: string) {
     return request<UserProfilePayload>('/api/user/profile', {
-      params: { userId }
+      params: { userId },
+      authToken
     });
   },
-  updateUserProfile(payload: ProfileUpdatePayload) {
+  updateUserProfile(payload: ProfileUpdatePayload, authToken: string) {
     return request<UserProfilePayload>('/api/user/profile', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      authToken
     });
   },
-  fetchUserStats(userId: string) {
-    return request<UserStatsResponse>(`/api/users/${userId}/stats`);
+  fetchUserStats(userId: string, authToken: string) {
+    return request<UserStatsResponse>(`/api/users/${userId}/stats`, { authToken });
   },
-  sendVisitEvent(payload: VisitEventPayload) {
+  sendVisitEvent(payload: VisitEventPayload, authToken: string) {
     return request<{ sessionId?: string }>('/api/metrics/visit', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      authToken
+    });
+  },
+  login(payload: LoginPayload) {
+    return request<{ token: string; userId: string }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload)
     });

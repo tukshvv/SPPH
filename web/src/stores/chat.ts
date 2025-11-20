@@ -67,6 +67,15 @@ export const useChatStore = defineStore('chat', {
       const metricsStore = useMetricsStore();
       const notifications = useNotificationStore();
       const userId = userStore.ensureUserId();
+      if (!userStore.authToken) {
+        notifications.push({
+          title: 'Нужен вход',
+          description: 'Авторизуйтесь перед отправкой сообщений в чат',
+          tone: 'error'
+        });
+        this.messages = this.messages.filter((msg) => msg.id !== placeholder.id);
+        return;
+      }
 
       const userMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -87,11 +96,14 @@ export const useChatStore = defineStore('chat', {
 
       this.isSending = true;
       try {
-        const response = await apiClient.chat({
-          userId,
-          message: trimmed,
-          mode: this.mode
-        });
+        const response = await apiClient.chat(
+          {
+            userId,
+            message: trimmed,
+            mode: this.mode
+          },
+          userStore.authToken
+        );
         const lastIndex = this.messages.findIndex((msg) => msg.id === placeholder.id);
         if (lastIndex !== -1) {
           this.messages.splice(lastIndex, 1, {

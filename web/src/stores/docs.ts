@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { apiClient } from '../lib/api';
+import { useUserStore } from './user';
 
 const CHUNK_SIZE = 900;
 const CHUNK_OVERLAP = 150;
@@ -87,6 +88,11 @@ export const useDocsStore = defineStore('docs', {
         throw new Error('Не удалось разбить документ на блоки. Проверьте содержимое.');
       }
 
+      const userStore = useUserStore();
+      if (!userStore.authToken) {
+        throw new Error('Сначала выполните вход, чтобы загрузить документы');
+      }
+
       this.isIngesting = true;
       try {
         await apiClient.ingestDocuments([
@@ -95,7 +101,7 @@ export const useDocsStore = defineStore('docs', {
             text: trimmed,
             meta: payload.meta
           }
-        ]);
+        ], userStore.authToken);
 
         const chunkEntries: DocumentChunk[] = chunks.map((text, index) => ({ index, text }));
 

@@ -28,6 +28,30 @@
             Сохранить ID
           </button>
         </form>
+        <form class="mt-2 flex flex-col gap-2 md:flex-row md:items-end" @submit.prevent="handleLogin">
+          <div class="flex-1">
+            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Пароль</label>
+            <input
+              v-model="passwordInput"
+              type="password"
+              class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+              placeholder="Пароль для работы с БД"
+            />
+          </div>
+          <button
+            type="submit"
+            class="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            Войти
+          </button>
+        </form>
+        <div class="mt-1 flex items-center justify-between text-xs text-slate-500">
+          <span>
+            <span class="font-semibold text-slate-800" v-if="isAuthenticated">Вход выполнен</span>
+            <span v-else>Для работы с базой данных выполните вход</span>
+          </span>
+          <span v-if="userStore.authError" class="text-rose-500">{{ userStore.authError }}</span>
+        </div>
         <div class="mt-4">
           <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Режим ответа</p>
           <div class="mt-2 grid gap-2 md:grid-cols-3">
@@ -117,6 +141,91 @@
             </button>
           </form>
           <p v-if="userStore.profileError" class="mt-2 text-xs text-red-500">{{ userStore.profileError }}</p>
+          <div class="mt-4 border-t border-slate-200 pt-3">
+            <header class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-semibold text-slate-800">Своё расписание</h3>
+                <p class="text-xs text-slate-500">Добавьте пары, встречи или события и сохраните их в профиле.</p>
+              </div>
+            </header>
+            <ul v-if="scheduleItems.length" class="mt-3 space-y-2 text-sm">
+              <li v-for="item in scheduleItems" :key="item.id" class="rounded-xl border border-slate-200 px-3 py-2">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <p class="font-semibold text-slate-800">{{ item.title }}</p>
+                    <p class="text-xs text-slate-500">{{ item.day }}, {{ item.time }}</p>
+                    <p v-if="item.location" class="text-xs text-slate-500">{{ item.location }}</p>
+                    <p v-if="item.description" class="text-xs text-slate-500">{{ item.description }}</p>
+                  </div>
+                  <button
+                    class="text-xs font-semibold text-rose-500 transition hover:text-rose-600"
+                    type="button"
+                    @click="removeScheduleItem(item.id!)"
+                  >
+                    Удалить
+                  </button>
+                </div>
+              </li>
+            </ul>
+            <p v-else class="mt-2 text-xs text-slate-500">Пока расписание пустое.</p>
+            <form class="mt-3 space-y-2" @submit.prevent="handleScheduleSubmit">
+              <div>
+                <label class="text-xs text-slate-500">Название события</label>
+                <input
+                  v-model="scheduleForm.title"
+                  type="text"
+                  class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  placeholder="Например: Семинар по статистике"
+                />
+              </div>
+              <div class="grid gap-2 md:grid-cols-2">
+                <div>
+                  <label class="text-xs text-slate-500">День</label>
+                  <input
+                    v-model="scheduleForm.day"
+                    type="text"
+                    class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="Например: Понедельник"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-500">Время</label>
+                  <input
+                    v-model="scheduleForm.time"
+                    type="text"
+                    class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="Например: 10:00-11:30"
+                  />
+                </div>
+              </div>
+              <div class="grid gap-2 md:grid-cols-2">
+                <div>
+                  <label class="text-xs text-slate-500">Локация</label>
+                  <input
+                    v-model="scheduleForm.location"
+                    type="text"
+                    class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="Например: ауд. 301"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-500">Описание</label>
+                  <input
+                    v-model="scheduleForm.description"
+                    type="text"
+                    class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="Краткий комментарий"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                class="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/40"
+              >
+                Добавить событие
+              </button>
+            </form>
+          </div>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <header>
@@ -187,7 +296,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch, nextTick, onMounted } from 'vue';
+import { reactive, ref, watch, nextTick, onMounted, computed } from 'vue';
 import { useChatStore } from '../stores/chat';
 import ChatMessageList from '../components/ChatMessageList.vue';
 import ChatInput from '../components/ChatInput.vue';
@@ -196,6 +305,7 @@ import { useUserStore } from '../stores/user';
 import { useMetricsStore } from '../stores/metrics';
 import { useNotificationStore } from '../stores/notifications';
 import { useDocsStore } from '../stores/docs';
+import type { ScheduleItem } from '../lib/api';
 
 const chatStore = useChatStore();
 const draft = ref('');
@@ -207,12 +317,23 @@ const docsStore = useDocsStore();
 
 const ensuredUserId = userStore.ensureUserId();
 const userIdInput = ref(ensuredUserId);
+const passwordInput = ref('');
+const isAuthenticated = computed(() => Boolean(userStore.authToken));
 
 const profileForm = reactive({
   major: '',
   level: '',
   topics: ''
 });
+
+const scheduleForm = reactive({
+  title: '',
+  day: '',
+  time: '',
+  location: '',
+  description: ''
+});
+const scheduleItems = ref<ScheduleItem[]>([]);
 
 const docForm = reactive({
   id: '',
@@ -271,6 +392,10 @@ const handleUserIdSave = async () => {
 
   const previousId = userStore.userId;
   userStore.setUserId(trimmed);
+  if (previousId && previousId !== trimmed) {
+    userStore.logout();
+    passwordInput.value = '';
+  }
   await userStore.fetchProfile();
   chatStore.resetConversation();
   if (previousId && previousId !== trimmed) {
@@ -283,6 +408,31 @@ const handleUserIdSave = async () => {
     description: 'Локальный идентификатор пользователя сохранён',
     tone: 'success'
   });
+};
+
+const handleLogin = async () => {
+  const password = passwordInput.value.trim();
+  if (!password) {
+    notifications.push({
+      title: 'Пароль обязателен',
+      description: 'Введите пароль, чтобы войти',
+      tone: 'error'
+    });
+    return;
+  }
+
+  try {
+    await userStore.login(password);
+    notifications.push({
+      title: 'Вход выполнен',
+      description: 'Теперь можно отправлять запросы в базу данных',
+      tone: 'success'
+    });
+    await metricsStore.startVisit(userStore.userId!);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Не удалось войти';
+    notifications.push({ title: 'Ошибка входа', description: message, tone: 'error' });
+  }
 };
 
 const handleDocIngest = async () => {
@@ -362,12 +512,64 @@ const handleProfileSubmit = async () => {
   }
 };
 
+const handleScheduleSubmit = async () => {
+  const newEntry: ScheduleItem = {
+    id: crypto.randomUUID(),
+    title: scheduleForm.title.trim(),
+    day: scheduleForm.day.trim(),
+    time: scheduleForm.time.trim(),
+    location: scheduleForm.location.trim() || undefined,
+    description: scheduleForm.description.trim() || undefined
+  };
+
+  if (!newEntry.title || !newEntry.day || !newEntry.time) {
+    notifications.push({
+      title: 'Заполните поля',
+      description: 'Название, день и время обязательны',
+      tone: 'error'
+    });
+    return;
+  }
+
+  scheduleItems.value = [...scheduleItems.value, newEntry];
+  try {
+    await userStore.updateProfile({ schedule: scheduleItems.value });
+    notifications.push({
+      title: 'Событие добавлено',
+      description: 'Расписание сохранено',
+      tone: 'success'
+    });
+    scheduleForm.title = '';
+    scheduleForm.day = '';
+    scheduleForm.time = '';
+    scheduleForm.location = '';
+    scheduleForm.description = '';
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Не удалось сохранить расписание';
+    notifications.push({ title: 'Ошибка', description: message, tone: 'error' });
+    scheduleItems.value = scheduleItems.value.filter((item) => item.id !== newEntry.id);
+  }
+};
+
+const removeScheduleItem = async (id: string) => {
+  const updated = scheduleItems.value.filter((item) => item.id !== id);
+  scheduleItems.value = updated;
+  try {
+    await userStore.updateProfile({ schedule: updated });
+    notifications.push({ title: 'Удалено', description: 'Элемент расписания удалён', tone: 'success' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Не удалось обновить расписание';
+    notifications.push({ title: 'Ошибка', description: message, tone: 'error' });
+  }
+};
+
 watch(
   () => userStore.profile,
   (profile) => {
     profileForm.major = profile?.major ?? '';
     profileForm.level = profile?.level ?? '';
     profileForm.topics = profile?.topics?.join(', ') ?? '';
+    scheduleItems.value = profile?.schedule ?? [];
   },
   { immediate: true }
 );
@@ -379,6 +581,19 @@ watch(
       userIdInput.value = value;
     }
   }
+);
+
+watch(
+  () => userStore.authToken,
+  (token) => {
+    if (token) {
+      void userStore.fetchProfile();
+      void metricsStore.startVisit(userStore.ensureUserId());
+    } else {
+      scheduleItems.value = [];
+    }
+  },
+  { immediate: true }
 );
 
 onMounted(async () => {

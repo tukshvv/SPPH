@@ -15,6 +15,10 @@ chatRouter.post('/', validate(chatRequestSchema), async (req, res, next) => {
   try {
     const { userId, sessionId, message, messages, mode } = req.body as ChatRequestBody;
 
+    if (req.authUserId !== userId) {
+      throw new HttpError(403, 'FORBIDDEN', 'Неверный пользователь для этой сессии');
+    }
+
     let prompt = message;
 
     if (!prompt && messages) {
