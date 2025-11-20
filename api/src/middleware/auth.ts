@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { HttpError } from '../utils/errors.js';
-import { resolveToken } from '../services/authService.js';
+import { verifyToken } from '../services/authService.js';
 
 const extractToken = (header?: string | null) => {
   if (!header) return null;
@@ -11,7 +11,8 @@ const extractToken = (header?: string | null) => {
 
 export const requireAuth: RequestHandler = (req, _res, next) => {
   const token = extractToken(req.headers.authorization);
-  const userId = resolveToken(token);
+  const payload = verifyToken(token);
+  const userId = payload?.userId;
 
   if (!userId) {
     return next(new HttpError(401, 'UNAUTHORIZED', 'Для запроса требуется вход'));

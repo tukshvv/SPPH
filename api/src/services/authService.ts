@@ -1,31 +1,72 @@
-import { randomUUID } from 'crypto';
-import { HttpError } from '../utils/errors.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { prisma } from '../utils/prisma.js';
 import { env } from '../utils/env.js';
-import { ensureUser } from './analyticsService.js';
+import { HttpError } from '../utils/errors.js';
+import { recordSessionStart } from './activityService.js';
 
-const activeTokens = new Map<string, { userId: string; issuedAt: Date }>();
+const TOKEN_EXPIRY = '7d';
 
-const sanitize = (value: string) => value.trim();
+interface TokenPayload {
+  userId: string;
+}
 
-export const login = async (userId: string, password: string) => {
-  const normalizedPassword = sanitize(password);
-  if (!normalizedPassword || normalizedPassword !== env.APP_LOGIN_PASSWORD) {
-    throw new HttpError(401, 'INVALID_CREDENTIALS', 'Неверный логин или пароль');
+export interface RegisterInput {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+const buildToken = (payload: TokenPayload) => jwt.sign(payload, env.JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+
+export const registerUser = async ({ name, email, password }: RegisterInput) => {
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    throw new HttpError(409, 'EMAIL_EXISTS', 'User with this email already exists');
   }
 
-  await ensureUser(userId);
-  const token = randomUUID();
-  activeTokens.set(token, { userId, issuedAt: new Date() });
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({
+    data: {
+      name,
+      email,
+      passwordHash,
+      activity: {
+        create: {}
+      }
+    }
+  });
 
-  return { token, userId };
+  const token = buildToken({ userId: user.id });
+  return { token, user };
 };
 
-export const resolveToken = (token?: string) => {
+export const loginUser = async ({ email, password }: LoginInput) => {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    throw new HttpError(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
+  }
+
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) {
+    throw new HttpError(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
+  }
+
+  const token = buildToken({ userId: user.id });
+  await recordSessionStart(user.id);
+  return { token, user };
+};
+
+export const verifyToken = (token?: string | null): TokenPayload | null => {
   if (!token) return null;
-  const session = activeTokens.get(token.trim());
-  return session?.userId ?? null;
-};
-
-export const revokeToken = (token: string) => {
-  activeTokens.delete(token);
+  try {
+    return jwt.verify(token, env.JWT_SECRET) as TokenPayload;
+  } catch (error) {
+    return null;
+  }
 };

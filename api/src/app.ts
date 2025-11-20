@@ -3,15 +3,17 @@ import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { chatRouter } from './routes/chat.js';
-import { analyticsRouter } from './routes/analytics.js';
-import { ingestRouter } from './routes/ingest.js';
 import { errorHandler } from './middleware/error.js';
 import { env } from './utils/env.js';
 import { requestContext } from './middleware/requestContext.js';
 import { requestLogger } from './middleware/logger.js';
 import { userRouter } from './routes/user.js';
-import { requireAuth } from './middleware/auth.js';
 import { authRouter } from './routes/auth.js';
+import { taskRouter } from './routes/tasks.js';
+import { noteRouter } from './routes/notes.js';
+import { preferenceRouter } from './routes/preferences.js';
+import { dashboardRouter } from './routes/dashboard.js';
+import { usageRouter } from './routes/usage.js';
 
 const allowedOrigins = [process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173'];
 
@@ -20,7 +22,7 @@ const chatLimiter = rateLimit({
   limit: 30,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  keyGenerator: (req) => `${req.ip}-${(req.body as any)?.userId ?? 'anon'}`
+  keyGenerator: (req) => `${req.ip}-${req.headers.authorization ?? 'anon'}`
 });
 
 export const createApp = () => {
@@ -53,10 +55,13 @@ export const createApp = () => {
   });
 
   app.use('/api/auth', authRouter);
-  app.use('/api/chat', requireAuth, chatLimiter, chatRouter);
-  app.use('/api', requireAuth, ingestRouter);
-  app.use('/api', requireAuth, analyticsRouter);
-  app.use('/api/user', requireAuth, userRouter);
+  app.use('/api/chat', chatLimiter, chatRouter);
+  app.use('/api/user', userRouter);
+  app.use('/api/tasks', taskRouter);
+  app.use('/api/notes', noteRouter);
+  app.use('/api/preferences', preferenceRouter);
+  app.use('/api/dashboard', dashboardRouter);
+  app.use('/api/usage', usageRouter);
 
   app.use(errorHandler);
 
